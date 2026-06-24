@@ -1,0 +1,56 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "实时监控",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/control/control",
+			"style": {
+				"navigationBarTitleText": "控制面板"
+			}
+		},
+		{
+			"path": "pages/history/history",
+			"style": {
+				"navigationBarTitleText": "历史记录",
+				"enablePullDownRefresh": true
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "智能回收箱",
+		"navigationBarBackgroundColor": "#1a73e8",
+		"backgroundColor": "#f5f5f5"
+	},
+	"tabBar": {
+		"color": "#8a8a8a",
+		"selectedColor": "#1a73e8",
+		"borderStyle": "black",
+		"backgroundColor": "#ffffff",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "监控",
+				"iconPath": "static/icons/home.png",
+				"selectedIconPath": "static/icons/home-active.png"
+			},
+			{
+				"pagePath": "pages/control/control",
+				"text": "控制",
+				"iconPath": "static/icons/control.png",
+				"selectedIconPath": "static/icons/control-active.png"
+			},
+			{
+				"pagePath": "pages/history/history",
+				"text": "历史",
+				"iconPath": "static/icons/history.png",
+				"selectedIconPath": "static/icons/history-active.png"
+			}
+		]
+	}
+}

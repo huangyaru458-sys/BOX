@@ -1,0 +1,460 @@
+<template>
+	<view class="container">
+		<view class="section">
+			<view class="section-header">
+				<text class="section-title">门控控制</text>
+				<text class="section-desc">控制投放门和维护门的开关</text>
+			</view>
+			<view class="control-grid">
+				<view class="control-card">
+					<view class="control-icon door-icon">🚪</view>
+					<text class="control-name">前门</text>
+					<view class="control-buttons">
+						<view class="btn btn-open" @click="sendCommand('FRONT_DOOR_OPEN')">
+							<text class="btn-text">打开</text>
+						</view>
+						<view class="btn btn-close" @click="sendCommand('FRONT_DOOR_CLOSE')">
+							<text class="btn-text">关闭</text>
+						</view>
+					</view>
+				</view>
+				<view class="control-card">
+					<view class="control-icon lock-icon">🔒</view>
+					<text class="control-name">后门</text>
+					<view class="control-buttons">
+						<view class="btn btn-open" @click="sendCommand('BACK_DOOR_OPEN')">
+							<text class="btn-text">打开</text>
+						</view>
+						<view class="btn btn-close" @click="sendCommand('BACK_DOOR_CLOSE')">
+							<text class="btn-text">关闭</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<view class="section">
+			<view class="section-header">
+				<text class="section-title">设备控制</text>
+				<text class="section-desc">控制风扇和蜂鸣器</text>
+			</view>
+			<view class="control-grid">
+				<view class="control-card">
+					<view class="control-icon fan-icon">🌀</view>
+					<text class="control-name">风扇</text>
+					<view class="toggle-switch" :class="{ active: fanState }" @click="toggleFan">
+						<view class="toggle-thumb"></view>
+					</view>
+					<text class="toggle-label">{{ fanState ? '开启' : '关闭' }}</text>
+				</view>
+				<view class="control-card">
+					<view class="control-icon buzzer-icon">🔊</view>
+					<text class="control-name">蜂鸣器</text>
+					<view class="control-buttons">
+						<view class="btn btn-warning" @click="sendCommand('BUZZER_ON')">
+							<text class="btn-text">开启</text>
+						</view>
+						<view class="btn btn-normal" @click="sendCommand('BUZZER_OFF')">
+							<text class="btn-text">关闭</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<view class="section">
+			<view class="section-header">
+				<text class="section-title">告警控制</text>
+				<text class="section-desc">处理设备告警</text>
+			</view>
+			<view class="alert-controls">
+				<view class="alert-card" @click="sendCommand('ALARM_STOP')">
+					<view class="alert-icon">🛑</view>
+					<view class="alert-info">
+						<text class="alert-title">停止告警</text>
+						<text class="alert-desc">停止蜂鸣器告警声</text>
+					</view>
+					<text class="alert-arrow">›</text>
+				</view>
+			</view>
+		</view>
+
+		<view class="section">
+			<view class="section-header">
+				<text class="section-title">快捷指令</text>
+				<text class="section-desc">一键执行常用操作</text>
+			</view>
+			<view class="quick-actions">
+				<view class="quick-item" @click="sendCommand('FAN_ON')">
+					<view class="quick-icon">❄️</view>
+					<text class="quick-text">开启通风</text>
+				</view>
+				<view class="quick-item" @click="sendCommand('FAN_OFF')">
+					<view class="quick-icon">🌡️</view>
+					<text class="quick-text">关闭通风</text>
+				</view>
+				<view class="quick-item" @click="sendCommand('FRONT_DOOR_OPEN')">
+					<view class="quick-icon">📥</view>
+					<text class="quick-text">投放口</text>
+				</view>
+				<view class="quick-item" @click="sendCommand('BACK_DOOR_OPEN')">
+					<view class="quick-icon">📤</view>
+					<text class="quick-text">取物口</text>
+				</view>
+			</view>
+		</view>
+
+		<view class="history-section">
+			<view class="section-header">
+				<text class="section-title">操作记录</text>
+			</view>
+			<view class="history-list">
+				<view class="history-item" v-for="(record, index) in history" :key="index">
+					<view class="history-dot" :class="record.success ? 'success' : 'failed'"></view>
+					<text class="history-action">{{ record.action }}</text>
+					<text class="history-time">{{ record.time }}</text>
+				</view>
+				<view class="empty-history" v-if="history.length === 0">
+					<text class="empty-icon">📋</text>
+					<text class="empty-text">暂无操作记录</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue';
+import { api, CONTROL_COMMANDS } from '@/api/device';
+
+const fanState = ref(false);
+const history = ref<Array<{ action: string; time: string; success: boolean }>>([]);
+
+const sendCommand = async (action: string) => {
+	try {
+		const result = await api.sendControl(action);
+		const now = new Date();
+		const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+		
+		const actionMap: Record<string, string> = {
+			[CONTROL_COMMANDS.FRONT_DOOR_OPEN]: '打开前门',
+			[CONTROL_COMMANDS.FRONT_DOOR_CLOSE]: '关闭前门',
+			[CONTROL_COMMANDS.BACK_DOOR_OPEN]: '打开后门',
+			[CONTROL_COMMANDS.BACK_DOOR_CLOSE]: '关闭后门',
+			[CONTROL_COMMANDS.FAN_ON]: '开启风扇',
+			[CONTROL_COMMANDS.FAN_OFF]: '关闭风扇',
+			[CONTROL_COMMANDS.BUZZER_ON]: '开启蜂鸣器',
+			[CONTROL_COMMANDS.BUZZER_OFF]: '关闭蜂鸣器',
+			[CONTROL_COMMANDS.ALARM_STOP]: '停止告警'
+		};
+
+		history.value.unshift({
+			action: actionMap[action] || action,
+			time: timeStr,
+			success: result.code === 200
+		});
+
+		if (history.value.length > 20) {
+			history.value = history.value.slice(0, 20);
+		}
+
+		if (action === CONTROL_COMMANDS.FAN_ON) {
+			fanState.value = true;
+		} else if (action === CONTROL_COMMANDS.FAN_OFF) {
+			fanState.value = false;
+		}
+
+		if (result.data?.offlineWarning) {
+			uni.showToast({
+				title: '设备离线，指令已缓存',
+				icon: 'none',
+				duration: 2000
+			});
+		} else {
+			uni.showToast({
+				title: '指令发送成功',
+				icon: 'success',
+				duration: 1500
+			});
+		}
+	} catch (e) {
+		uni.showToast({
+			title: '发送失败',
+			icon: 'error',
+			duration: 1500
+		});
+	}
+};
+
+const toggleFan = () => {
+	if (fanState.value) {
+		sendCommand(CONTROL_COMMANDS.FAN_OFF);
+	} else {
+		sendCommand(CONTROL_COMMANDS.FAN_ON);
+	}
+};
+</script>
+
+<style lang="scss">
+.container {
+	min-height: 100vh;
+	background: #f5f5f5;
+	padding: 20rpx;
+	padding-bottom: 120rpx;
+}
+
+.section {
+	background: #fff;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	margin-bottom: 20rpx;
+	box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.section-header {
+	margin-bottom: 20rpx;
+}
+
+.section-title {
+	display: block;
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #1a1a1a;
+}
+
+.section-desc {
+	display: block;
+	font-size: 24rpx;
+	color: #999;
+	margin-top: 4rpx;
+}
+
+.control-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 20rpx;
+}
+
+.control-card {
+	background: #f8f9fa;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	text-align: center;
+}
+
+.control-icon {
+	font-size: 48rpx;
+	margin-bottom: 12rpx;
+}
+
+.control-name {
+	display: block;
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #333;
+	margin-bottom: 20rpx;
+}
+
+.control-buttons {
+	display: flex;
+	gap: 12rpx;
+}
+
+.btn {
+	flex: 1;
+	height: 72rpx;
+	border-radius: 12rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+	&:active {
+		transform: scale(0.95);
+	}
+	&.btn-open {
+		background: linear-gradient(135deg, #43e97b, #38f9d7);
+	}
+	&.btn-close {
+		background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+	}
+	&.btn-warning {
+		background: linear-gradient(135deg, #faad14, #ffc53d);
+	}
+	&.btn-normal {
+		background: #e8e8e8;
+		.btn-text { color: #666; }
+	}
+}
+
+.btn-text {
+	font-size: 26rpx;
+	font-weight: 500;
+	color: #fff;
+}
+
+.toggle-switch {
+	width: 120rpx;
+	height: 64rpx;
+	background: #e8e8e8;
+	border-radius: 32rpx;
+	position: relative;
+	margin: 0 auto;
+	transition: background 0.3s ease;
+	&.active {
+		background: linear-gradient(135deg, #1a73e8, #4285f4);
+	}
+}
+
+.toggle-thumb {
+	width: 56rpx;
+	height: 56rpx;
+	background: #fff;
+	border-radius: 50%;
+	position: absolute;
+	top: 4rpx;
+	left: 4rpx;
+	transition: left 0.3s ease;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+	.toggle-switch.active & {
+		left: 60rpx;
+	}
+}
+
+.toggle-label {
+	display: block;
+	font-size: 24rpx;
+	color: #999;
+	margin-top: 12rpx;
+}
+
+.alert-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.alert-card {
+	display: flex;
+	align-items: center;
+	padding: 24rpx;
+	background: #fff7e6;
+	border-radius: 12rpx;
+	border-left: 6rpx solid #fa8c16;
+}
+
+.alert-icon {
+	font-size: 40rpx;
+	margin-right: 16rpx;
+}
+
+.alert-info {
+	flex: 1;
+}
+
+.alert-title {
+	display: block;
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #d46b08;
+}
+
+.alert-desc {
+	display: block;
+	font-size: 24rpx;
+	color: #fa8c16;
+	margin-top: 4rpx;
+}
+
+.alert-arrow {
+	font-size: 36rpx;
+	color: #fa8c16;
+}
+
+.quick-actions {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 16rpx;
+}
+
+.quick-item {
+	background: #f8f9fa;
+	border-radius: 12rpx;
+	padding: 20rpx 10rpx;
+	text-align: center;
+	transition: all 0.2s ease;
+	&:active {
+		transform: scale(0.95);
+		background: #e8f0fe;
+	}
+}
+
+.quick-icon {
+	font-size: 36rpx;
+	margin-bottom: 8rpx;
+}
+
+.quick-text {
+	display: block;
+	font-size: 22rpx;
+	color: #666;
+}
+
+.history-section {
+	background: #fff;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.history-list {
+	max-height: 400rpx;
+	overflow-y: auto;
+}
+
+.history-item {
+	display: flex;
+	align-items: center;
+	padding: 16rpx 0;
+	border-bottom: 1rpx solid #f0f0f0;
+	&:last-child {
+		border-bottom: none;
+	}
+}
+
+.history-dot {
+	width: 12rpx;
+	height: 12rpx;
+	border-radius: 50%;
+	background: #ccc;
+	margin-right: 16rpx;
+	&.success { background: #52c41a; }
+	&.failed { background: #ff4d4f; }
+}
+
+.history-action {
+	flex: 1;
+	font-size: 26rpx;
+	color: #333;
+}
+
+.history-time {
+	font-size: 24rpx;
+	color: #999;
+}
+
+.empty-history {
+	text-align: center;
+	padding: 40rpx;
+}
+
+.empty-icon {
+	font-size: 48rpx;
+	display: block;
+	margin-bottom: 12rpx;
+}
+
+.empty-text {
+	font-size: 26rpx;
+	color: #999;
+}
+</style>
