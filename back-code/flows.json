@@ -24,7 +24,7 @@
         "id": "mqtt_broker_local",
         "type": "mqtt-broker",
         "name": "本地MQTT",
-        "broker": "10.94.163.228",
+        "broker": "127.0.0.1:1883",
         "port": "1883",
         "clientid": "node-red-box",
         "autoConnect": true,
@@ -328,7 +328,7 @@
         "type": "function",
         "z": "tab_core",
         "name": "遥测处理",
-        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst front = !!(d.frontLight || d.frontDoor || d.front_door);\nconst back = !!(d.backLight || d.backDoor || d.back_door);\n\nconst data = {\n  deviceId: d.deviceId || d.device_id || 'ESP32_BOX_001',\n  temperature: Number(d.temperature || d.temp || 0),\n  humidity: Number(d.humidity || d.hum || 0),\n  capacity: Number(d.capacity || d.fullness || 0),\n  airQuality: Number(d.airQuality || d.air_quality || d.mq135 || 0),\n  humanDetect: !!(d.humanDetect || d.human_detect || d.pir),\n  fanStatus: !!(d.fanStatus || d.fan_status),\n  frontLight: front,\n  backLight: back,\n  frontDoor: front,\n  backDoor: back,\n  tiltAngle: Number(d.tiltAngle || d.tilt_angle || 0),\n  sensorFaults: Array.isArray(d.sensorFaults) ? d.sensorFaults : (Array.isArray(d.sensor_faults) ? d.sensor_faults : []),\n  buzzerMode: d.buzzerMode || d.buzzer_mode || 'off',\n  netMode: d.netMode || d.net_mode || 'STA',\n  wifiSsid: d.wifiSsid || d.wifi_ssid || '',\n  mqttServer: d.mqttServer || d.mqtt_server || '',\n  mqttPort: Number(d.mqttPort || d.mqtt_port || 1883),\n  staIp: d.staIp || d.sta_ip || '',\n  systemState: d.systemState || 'STANDBY',\n  lastSeen: ts,\n  mqttOnline: true\n};\n\nglobal.set('latestTelemetry', data);\nglobal.set('latestTelemetryRaw', d);\n\nconst status = [\n  '设备: ' + data.deviceId,\n  '在线: 是',\n  '温度: ' + data.temperature.toFixed(1) + ' C',\n  '湿度: ' + data.humidity.toFixed(1) + ' %',\n  '满载率: ' + data.capacity.toFixed(1) + ' %',\n  '空气质量: ' + data.airQuality,\n  '倾角: ' + data.tiltAngle.toFixed(1) + ' deg',\n  '风扇: ' + (data.fanStatus ? '开' : '关'),\n  '前门: ' + (data.frontLight ? '开' : '关'),\n  '后门: ' + (data.backLight ? '开' : '关'),\n  '故障: ' + (data.sensorFaults.length ? data.sensorFaults.join(',') : '无')\n].join('\\n');\n\nreturn [\n  { payload: data.temperature, topic: 'temperature' },\n  { payload: data.humidity, topic: 'humidity' },\n  { payload: data.capacity, topic: 'capacity' },\n  { payload: data.airQuality, topic: 'airQuality' },\n  { payload: data.tiltAngle, topic: 'tiltAngle' },\n  { payload: status },\n  { topic: 'INSERT INTO telemetry (device_id,ts,temperature,humidity,capacity,air_quality,human_detect,fan_status,front_door,back_door,tilt_angle,sensor_faults,buzzer_mode,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12,$p13,$p14)', payload: [data.deviceId, ts, data.temperature, data.humidity, data.capacity, data.airQuality, data.humanDetect ? 1 : 0, data.fanStatus ? 1 : 0, data.frontLight ? 1 : 0, data.backLight ? 1 : 0, data.tiltAngle, JSON.stringify(data.sensorFaults), data.buzzerMode, JSON.stringify(d)] },\n  { topic: 'INSERT INTO devices (device_id,device_name,online,last_seen,mqtt_online) VALUES ($p1,$p2,$p3,$p4,$p5) ON CONFLICT(device_id) DO UPDATE SET device_name=excluded.device_name,online=excluded.online,last_seen=excluded.last_seen,mqtt_online=excluded.mqtt_online', payload: [data.deviceId, 'ESP32_BOX_001', 1, ts, 1] }\n];",
+        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst front = !!(d.frontLight || d.frontDoor || d.front_door);\nconst back = !!(d.backLight || d.backDoor || d.back_door);\nconst tiltAngle = Number(d.tiltAngle || d.tilt_angle || 0);\n\nconst data = {\n  deviceId: d.deviceId || d.device_id || 'ESP32_BOX_001',\n  temperature: Number(d.temperature || d.temp || 0),\n  humidity: Number(d.humidity || d.hum || 0),\n  capacity: Number(d.capacity || d.fullness || 0),\n  airQuality: Number(d.airQuality || d.air_quality || d.mq135 || 0),\n  humanDetect: !!(d.humanDetect || d.human_detect || d.pir),\n  boxTiltAlert: !!(d.boxTiltAlert || d.box_tilt_alert) || tiltAngle >= 25,\n  fanStatus: !!(d.fanStatus || d.fan_status),\n  frontLight: front,\n  backLight: back,\n  frontDoor: front,\n  backDoor: back,\n  tiltAngle,\n  sensorFaults: Array.isArray(d.sensorFaults) ? d.sensorFaults : (Array.isArray(d.sensor_faults) ? d.sensor_faults : []),\n  buzzerMode: d.buzzerMode || d.buzzer_mode || 'off',\n  netMode: d.netMode || d.net_mode || 'STA',\n  wifiSsid: d.wifiSsid || d.wifi_ssid || '',\n  mqttServer: d.mqttServer || d.mqtt_server || '',\n  mqttPort: Number(d.mqttPort || d.mqtt_port || 1883),\n  staIp: d.staIp || d.sta_ip || '',\n  systemState: d.systemState || 'STANDBY',\n  lastSeen: ts,\n  mqttOnline: true\n};\n\nglobal.set('latestTelemetry', data);\nglobal.set('latestTelemetryRaw', d);\n\nconst status = [\n  '设备: ' + data.deviceId,\n  '在线: 是',\n  '温度: ' + data.temperature.toFixed(1) + ' C',\n  '湿度: ' + data.humidity.toFixed(1) + ' %',\n  '满载率: ' + data.capacity.toFixed(1) + ' %',\n  '空气质量: ' + data.airQuality,\n  '倾角: ' + data.tiltAngle.toFixed(1) + ' deg',\n  '倾斜告警: ' + (data.boxTiltAlert ? '是' : '否'),\n  '风扇: ' + (data.fanStatus ? '开' : '关'),\n  '前门: ' + (data.frontLight ? '开' : '关'),\n  '后门: ' + (data.backLight ? '开' : '关'),\n  '故障: ' + (data.sensorFaults.length ? data.sensorFaults.join(',') : '无')\n].join('\\n');\n\nreturn [\n  { payload: data.temperature, topic: 'temperature' },\n  { payload: data.humidity, topic: 'humidity' },\n  { payload: data.capacity, topic: 'capacity' },\n  { payload: data.airQuality, topic: 'airQuality' },\n  { payload: data.tiltAngle, topic: 'tiltAngle' },\n  { payload: status },\n  { topic: 'INSERT INTO telemetry (device_id,ts,temperature,humidity,capacity,air_quality,human_detect,fan_status,front_door,back_door,tilt_angle,sensor_faults,buzzer_mode,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12,$p13,$p14)', payload: [data.deviceId, ts, data.temperature, data.humidity, data.capacity, data.airQuality, data.humanDetect ? 1 : 0, data.fanStatus ? 1 : 0, data.frontLight ? 1 : 0, data.backLight ? 1 : 0, data.tiltAngle, JSON.stringify(data.sensorFaults), data.buzzerMode, JSON.stringify(d)] },\n  { topic: 'INSERT INTO devices (device_id,device_name,online,last_seen,mqtt_online) VALUES ($p1,$p2,$p3,$p4,$p5) ON CONFLICT(device_id) DO UPDATE SET device_name=excluded.device_name,online=excluded.online,last_seen=excluded.last_seen,mqtt_online=excluded.mqtt_online', payload: [data.deviceId, 'ESP32_BOX_001', 1, ts, 1] }\n];",
         "outputs": 9,
         "timeout": "",
         "noerr": 0,
@@ -677,7 +677,7 @@
         "name": "温度",
         "group": "ui_group_metrics",
         "order": 1,
-        "width": 3,
+        "width": "2",
         "height": 3,
         "gtype": "gage",
         "title": "温度",
@@ -692,6 +692,8 @@
         ],
         "seg1": "25",
         "seg2": "35",
+        "diff": false,
+        "className": "",
         "x": 970,
         "y": 540,
         "wires": []
@@ -703,7 +705,7 @@
         "name": "湿度",
         "group": "ui_group_metrics",
         "order": 2,
-        "width": 3,
+        "width": "2",
         "height": 3,
         "gtype": "gage",
         "title": "湿度",
@@ -718,6 +720,8 @@
         ],
         "seg1": "60",
         "seg2": "85",
+        "diff": false,
+        "className": "",
         "x": 950,
         "y": 360,
         "wires": []
@@ -729,7 +733,7 @@
         "name": "满载率",
         "group": "ui_group_metrics",
         "order": 3,
-        "width": 3,
+        "width": "2",
         "height": 3,
         "gtype": "gage",
         "title": "满载率",
@@ -744,6 +748,8 @@
         ],
         "seg1": "60",
         "seg2": "90",
+        "diff": false,
+        "className": "",
         "x": 770,
         "y": 360,
         "wires": []
@@ -755,7 +761,7 @@
         "name": "空气质量",
         "group": "ui_group_metrics",
         "order": 4,
-        "width": 3,
+        "width": "2",
         "height": 3,
         "gtype": "gage",
         "title": "空气质量",
@@ -770,6 +776,8 @@
         ],
         "seg1": "300",
         "seg2": "700",
+        "diff": false,
+        "className": "",
         "x": 840,
         "y": 420,
         "wires": []
@@ -781,7 +789,7 @@
         "name": "倾斜角",
         "group": "ui_group_metrics",
         "order": 5,
-        "width": 3,
+        "width": "2",
         "height": 3,
         "gtype": "gage",
         "title": "倾斜角",
@@ -796,6 +804,8 @@
         ],
         "seg1": "25",
         "seg2": "45",
+        "diff": false,
+        "className": "",
         "x": 1030,
         "y": 440,
         "wires": []
@@ -808,14 +818,14 @@
         "group": "ui_group_metrics",
         "order": 6,
         "width": 12,
-        "height": 6,
+        "height": "5",
         "label": "实时曲线",
         "chartType": "line",
         "legend": "true",
         "xformat": "HH:mm:ss",
         "interpolate": "linear",
         "nodata": "暂无数据",
-        "dot": "false",
+        "dot": true,
         "ymin": "",
         "ymax": "",
         "removeOlder": "24",
@@ -828,9 +838,16 @@
             "#1f77b4",
             "#ff7f0e",
             "#2ca02c",
-            "#d62728"
+            "#d62728",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000"
         ],
         "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
         "x": 1040,
         "y": 640,
         "wires": [
@@ -899,7 +916,7 @@
         "type": "function",
         "z": "tab_api",
         "name": "状态JSON",
-        "func": "const d = global.get('latestTelemetry') || { deviceId: 'ESP32_BOX_001', temperature: 0, humidity: 0, capacity: 0, airQuality: 0, humanDetect: false, fanStatus: false, frontLight: false, backLight: false, frontDoor: false, backDoor: false, tiltAngle: 0, sensorFaults: [], buzzerMode: 'off', netMode: 'STA', systemState: 'OFFLINE', lastSeen: 0, mqttOnline: false, mqttBrokerOnline: true };\nconst age = d.lastSeen ? Date.now() - d.lastSeen : null;\nconst front = Boolean(d.frontLight ?? d.frontDoor ?? d.front_door ?? false);\nconst back = Boolean(d.backLight ?? d.backDoor ?? d.back_door ?? false);\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { ...d, frontLight: front, frontDoor: front, backLight: back, backDoor: back, online: age !== null && age < 15000, lastTelemetryAgeMs: age, mqttBrokerOnline: true, systemState: d.systemState || (age !== null && age < 15000 ? 'STANDBY' : 'OFFLINE') } };\nreturn msg;",
+        "func": "const d = global.get('latestTelemetry') || { deviceId: 'ESP32_BOX_001', temperature: 0, humidity: 0, capacity: 0, airQuality: 0, humanDetect: false, boxTiltAlert: false, fanStatus: false, frontLight: false, backLight: false, frontDoor: false, backDoor: false, tiltAngle: 0, sensorFaults: [], buzzerMode: 'off', netMode: 'STA', systemState: 'OFFLINE', lastSeen: 0, mqttOnline: false, mqttBrokerOnline: true };\nconst age = d.lastSeen ? Date.now() - d.lastSeen : null;\nconst front = Boolean(d.frontLight ?? d.frontDoor ?? d.front_door ?? false);\nconst back = Boolean(d.backLight ?? d.backDoor ?? d.back_door ?? false);\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { ...d, frontLight: front, frontDoor: front, backLight: back, backDoor: back, online: age !== null && age < 15000, lastTelemetryAgeMs: age, mqttBrokerOnline: true, systemState: d.systemState || (age !== null && age < 15000 ? 'STANDBY' : 'OFFLINE') } };\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1736,6 +1753,7 @@
         "tooltip": "",
         "color": "",
         "bgcolor": "#009688",
+        "className": "",
         "icon": "power",
         "payload": "FAN_ON",
         "payloadType": "str",
@@ -1747,7 +1765,8 @@
             [
                 "fn_dash_control"
             ]
-        ]
+        ],
+        "info": "<style>\r\n  :root {\r\n    --bg-a: #eef6ff;\r\n    --bg-b: #f7fbff;\r\n    --card: rgba(255, 255, 255, 0.86);\r\n    --ink: #172033;\r\n    --muted: #6c7a91;\r\n    --blue: #1f8fff;\r\n    --cyan: #00c2ff;\r\n    --green: #21c77a;\r\n    --orange: #ff9f1c;\r\n    --red: #ef4444;\r\n    --shadow: 0 18px 45px rgba(31, 79, 130, 0.16);\r\n  }\r\n\r\n  body,\r\n  md-content,\r\n  .nr-dashboard-theme md-content {\r\n    background:\r\n      radial-gradient(circle at 12% 8%, rgba(0, 194, 255, 0.18), transparent 28%),\r\n      radial-gradient(circle at 86% 14%, rgba(33, 199, 122, 0.16), transparent 26%),\r\n      linear-gradient(135deg, var(--bg-a), var(--bg-b)) !important;\r\n    color: var(--ink) !important;\r\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\r\n  }\r\n\r\n  md-toolbar,\r\n  .nr-dashboard-theme md-toolbar {\r\n    background: linear-gradient(135deg, #174b76, #2596d8) !important;\r\n    box-shadow: 0 10px 30px rgba(25, 96, 148, 0.28) !important;\r\n  }\r\n\r\n  md-toolbar .md-toolbar-tools {\r\n    font-weight: 900 !important;\r\n    letter-spacing: 0 !important;\r\n  }\r\n\r\n  .nr-dashboard-cardcontainer {\r\n    padding: 14px !important;\r\n  }\r\n\r\n  md-card,\r\n  .nr-dashboard-theme md-card {\r\n    position: relative !important;\r\n    border-radius: 18px !important;\r\n    background: var(--card) !important;\r\n    box-shadow: var(--shadow) !important;\r\n    border: 1px solid rgba(255, 255, 255, 0.78) !important;\r\n    backdrop-filter: blur(14px);\r\n    overflow: hidden !important;\r\n    transform: translateZ(0);\r\n  }\r\n\r\n  md-card::before {\r\n    content: \"\";\r\n    position: absolute;\r\n    inset: 0;\r\n    pointer-events: none;\r\n    background: linear-gradient(135deg, rgba(255,255,255,0.64), rgba(255,255,255,0.08));\r\n    opacity: 0.72;\r\n  }\r\n\r\n  md-card:hover {\r\n    transform: translateY(-3px) scale(1.008);\r\n    transition: 180ms ease;\r\n    box-shadow: 0 24px 58px rgba(31, 79, 130, 0.22) !important;\r\n  }\r\n\r\n  .nr-dashboard-widget,\r\n  .nr-dashboard-template {\r\n    color: var(--ink) !important;\r\n  }\r\n\r\n  .nr-dashboard-text,\r\n  .nr-dashboard-gauge,\r\n  .nr-dashboard-button,\r\n  .nr-dashboard-switch,\r\n  .nr-dashboard-chart {\r\n    position: relative;\r\n    z-index: 1;\r\n  }\r\n\r\n  .nr-dashboard-theme .nr-dashboard-text p,\r\n  .nr-dashboard-theme .nr-dashboard-text span,\r\n  .nr-dashboard-theme .nr-dashboard-text div {\r\n    color: var(--ink) !important;\r\n    font-weight: 800 !important;\r\n  }\r\n\r\n  .nr-dashboard-theme .nr-dashboard-button button {\r\n    border-radius: 14px !important;\r\n    min-height: 44px !important;\r\n    font-weight: 900 !important;\r\n    color: #fff !important;\r\n    background: linear-gradient(135deg, #1f8fff, #00c2ff) !important;\r\n    box-shadow: 0 10px 22px rgba(31, 143, 255, 0.25) !important;\r\n  }\r\n\r\n  .nr-dashboard-theme .nr-dashboard-button button:hover {\r\n    filter: brightness(1.04);\r\n    transform: translateY(-1px);\r\n  }\r\n\r\n  .nr-dashboard-theme md-tabs,\r\n  .nr-dashboard-theme md-tabs-wrapper {\r\n    background: transparent !important;\r\n  }\r\n\r\n  .nr-dashboard-theme md-tab-item {\r\n    color: #4d5b70 !important;\r\n    font-weight: 800 !important;\r\n  }\r\n\r\n  .nr-dashboard-theme md-tab-item.md-active {\r\n    color: #0f79c8 !important;\r\n  }\r\n\r\n  .nr-dashboard-theme md-ink-bar {\r\n    background: linear-gradient(90deg, var(--blue), var(--cyan)) !important;\r\n    height: 4px !important;\r\n    border-radius: 99px !important;\r\n  }\r\n\r\n  .iot-hero-wrap {\r\n    width: calc(100% - 28px);\r\n    margin: 16px 14px 4px;\r\n    border-radius: 22px;\r\n    min-height: 178px;\r\n    position: relative;\r\n    overflow: hidden;\r\n    background:\r\n      linear-gradient(135deg, rgba(16, 66, 107, 0.96), rgba(37, 150, 216, 0.92)),\r\n      radial-gradient(circle at 75% 30%, rgba(255,255,255,0.35), transparent 24%);\r\n    box-shadow: 0 26px 60px rgba(18, 92, 150, 0.28);\r\n    color: #fff;\r\n  }\r\n\r\n  .iot-hero {\r\n    display: grid;\r\n    grid-template-columns: 1fr 310px;\r\n    gap: 18px;\r\n    align-items: center;\r\n    padding: 26px 32px;\r\n  }\r\n\r\n  .iot-title {\r\n    font-size: 32px;\r\n    font-weight: 950;\r\n    line-height: 1.16;\r\n    margin-bottom: 10px;\r\n  }\r\n\r\n  .iot-sub {\r\n    color: rgba(255,255,255,0.82);\r\n    font-size: 15px;\r\n    font-weight: 700;\r\n  }\r\n\r\n  .iot-pills {\r\n    display: flex;\r\n    flex-wrap: wrap;\r\n    gap: 10px;\r\n    margin-top: 18px;\r\n  }\r\n\r\n  .iot-pill {\r\n    padding: 8px 12px;\r\n    border-radius: 999px;\r\n    background: rgba(255,255,255,0.16);\r\n    border: 1px solid rgba(255,255,255,0.22);\r\n    font-size: 13px;\r\n    font-weight: 800;\r\n  }\r\n\r\n  .scene3d {\r\n    height: 160px;\r\n    perspective: 780px;\r\n    display: grid;\r\n    place-items: center;\r\n  }\r\n\r\n  .box3d {\r\n    position: relative;\r\n    width: 118px;\r\n    height: 118px;\r\n    transform-style: preserve-3d;\r\n    animation: boxSpin 7s infinite linear;\r\n  }\r\n\r\n  .face {\r\n    position: absolute;\r\n    width: 118px;\r\n    height: 118px;\r\n    border: 2px solid rgba(255,255,255,0.42);\r\n    background: linear-gradient(135deg, rgba(255,255,255,0.88), rgba(191,232,255,0.5));\r\n    box-shadow: inset 0 0 26px rgba(255,255,255,0.42);\r\n    border-radius: 10px;\r\n  }\r\n\r\n  .front { transform: translateZ(59px); }\r\n  .back { transform: rotateY(180deg) translateZ(59px); }\r\n  .right { transform: rotateY(90deg) translateZ(59px); }\r\n  .left { transform: rotateY(-90deg) translateZ(59px); }\r\n  .top { transform: rotateX(90deg) translateZ(59px); }\r\n  .bottom { transform: rotateX(-90deg) translateZ(59px); }\r\n\r\n  .box-light {\r\n    position: absolute;\r\n    width: 22px;\r\n    height: 22px;\r\n    border-radius: 50%;\r\n    left: 48px;\r\n    top: 48px;\r\n    background: #21c77a;\r\n    box-shadow: 0 0 24px #21c77a;\r\n    transform: translateZ(62px);\r\n  }\r\n\r\n  @keyframes boxSpin {\r\n    0% { transform: rotateX(-18deg) rotateY(0deg); }\r\n    100% { transform: rotateX(-18deg) rotateY(360deg); }\r\n  }\r\n\r\n  .iot-float {\r\n    position: absolute;\r\n    width: 82px;\r\n    height: 82px;\r\n    border-radius: 50%;\r\n    background: rgba(255,255,255,0.16);\r\n    right: 34px;\r\n    bottom: -28px;\r\n  }\r\n\r\n  @media (max-width: 760px) {\r\n    .iot-hero {\r\n      grid-template-columns: 1fr;\r\n      padding: 22px;\r\n    }\r\n\r\n    .scene3d {\r\n      height: 120px;\r\n    }\r\n\r\n    .iot-title {\r\n      font-size: 24px;\r\n    }\r\n  }\r\n</style>\r\n\r\n<script>\r\n(function () {\r\n  function injectHero() {\r\n    if (document.getElementById(\"iotHero3d\")) return;\r\n\r\n    var content = document.querySelector(\"md-content\") || document.body;\r\n    var hero = document.createElement(\"div\");\r\n    hero.id = \"iotHero3d\";\r\n    hero.className = \"iot-hero-wrap\";\r\n    hero.innerHTML = `\r\n      <div class=\"iot-hero\">\r\n        <div>\r\n          <div class=\"iot-title\">智能衣物回收箱管理系统</div>\r\n          <div class=\"iot-sub\">实时监测 · MQTT 控制 · 数据留存 · 设备状态同步</div>\r\n          <div class=\"iot-pills\">\r\n            <div class=\"iot-pill\">ESP32 在线监控</div>\r\n            <div class=\"iot-pill\">前门 GPIO33</div>\r\n            <div class=\"iot-pill\">后门 GPIO12</div>\r\n            <div class=\"iot-pill\">告警灯 GPIO14</div>\r\n          </div>\r\n        </div>\r\n        <div class=\"scene3d\">\r\n          <div class=\"box3d\">\r\n            <div class=\"face front\"></div>\r\n            <div class=\"face back\"></div>\r\n            <div class=\"face right\"></div>\r\n            <div class=\"face left\"></div>\r\n            <div class=\"face top\"></div>\r\n            <div class=\"face bottom\"></div>\r\n            <div class=\"box-light\"></div>\r\n          </div>\r\n        </div>\r\n      </div>\r\n      <div class=\"iot-float\"></div>\r\n    `;\r\n\r\n    var first = content.firstChild;\r\n    content.insertBefore(hero, first);\r\n  }\r\n\r\n  setTimeout(injectHero, 600);\r\n  setTimeout(injectHero, 1600);\r\n})();\r\n</script>"
     },
     {
         "id": "ui_button_dash_fan_off",
@@ -1879,5 +1898,47 @@
         "x": 800,
         "y": 200,
         "wires": []
+    },
+    {
+        "id": "ui_theme_3d_clothes_box",
+        "type": "ui_template",
+        "z": "tab_dash",
+        "group": "ui_group_metrics",
+        "name": "仪表盘整体美化CSS",
+        "order": 0,
+        "width": 12,
+        "height": 5,
+        "format": "<style>\n  :root {\n    --page-bg: #eef5f8;\n    --panel: #ffffff;\n    --panel-soft: #f7fafc;\n    --line: #dbe7ef;\n    --text: #1f2937;\n    --muted: #64748b;\n    --brand: #1687c7;\n    --brand-dark: #145f8f;\n    --accent: #22c55e;\n    --warn: #f59e0b;\n    --danger: #ef4444;\n    --shadow: 0 8px 22px rgba(15, 23, 42, 0.08);\n  }\n\n  body,\n  md-content,\n  .nr-dashboard-theme md-content {\n    background: linear-gradient(180deg, #eaf5fb 0%, #f7fbfd 42%, #eef5f8 100%) !important;\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\n    color: var(--text) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar {\n    height: 58px !important;\n    min-height: 58px !important;\n    background: linear-gradient(90deg, #155f8e, #1f8fc9) !important;\n    box-shadow: 0 4px 14px rgba(20, 95, 143, 0.22) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar .md-toolbar-tools {\n    height: 58px !important;\n    font-size: 22px !important;\n    font-weight: 900 !important;\n    letter-spacing: 0 !important;\n  }\n\n  .nr-dashboard-theme md-tabs-wrapper {\n    background: rgba(255, 255, 255, 0.88) !important;\n    border-bottom: 1px solid var(--line) !important;\n  }\n\n  .nr-dashboard-theme md-tab-item {\n    color: var(--muted) !important;\n    font-weight: 800 !important;\n    letter-spacing: 0 !important;\n  }\n\n  .nr-dashboard-theme md-tab-item.md-active {\n    color: var(--brand) !important;\n  }\n\n  .nr-dashboard-theme md-ink-bar {\n    background: var(--brand) !important;\n    height: 3px !important;\n  }\n\n  .nr-dashboard-cardcontainer {\n    max-width: 1320px !important;\n    margin: 0 auto !important;\n    padding: 14px 18px 28px !important;\n    display: grid !important;\n    grid-template-columns: minmax(0, 1fr) 330px !important;\n    gap: 14px !important;\n    align-items: start !important;\n  }\n\n  md-card,\n  .nr-dashboard-theme md-card {\n    border-radius: 10px !important;\n    background: var(--panel) !important;\n    border: 1px solid var(--line) !important;\n    box-shadow: var(--shadow) !important;\n    overflow: hidden !important;\n  }\n\n  md-card:hover {\n    transform: translateY(-1px);\n    transition: 140ms ease;\n  }\n\n  .nr-dashboard-cardtitle {\n    color: var(--brand) !important;\n    font-size: 19px !important;\n    font-weight: 900 !important;\n    padding: 12px 16px 4px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge {\n    padding: 0 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge svg {\n    max-height: 145px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge text {\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\n    font-weight: 800 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-chart {\n    min-height: 300px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-chart canvas {\n    border-radius: 8px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button {\n    border-radius: 8px !important;\n    min-height: 44px !important;\n    font-weight: 900 !important;\n    font-size: 15px !important;\n    color: #ffffff !important;\n    background: linear-gradient(180deg, #23a7ee, #1687c7) !important;\n    box-shadow: 0 6px 14px rgba(22, 135, 199, 0.22) !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button:hover {\n    filter: brightness(1.04);\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button:active {\n    transform: translateY(1px);\n  }\n\n  .nr-dashboard-theme .nr-dashboard-template {\n    color: var(--text) !important;\n    font-size: 14px !important;\n    line-height: 1.65 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-template pre,\n  .nr-dashboard-theme .nr-dashboard-template code {\n    background: #0f172a !important;\n    color: #dff6ff !important;\n    border-radius: 8px !important;\n    padding: 10px !important;\n    font-size: 13px !important;\n  }\n\n  /* 左侧实时监控区域：让仪表规整成 4 + 1 + 曲线 */\n  md-card:has(.nr-dashboard-gauge) {\n    min-height: 178px !important;\n  }\n\n  /* 右侧控制和告警区域固定宽度，避免被挤到屏幕外 */\n  md-card:has(.nr-dashboard-button) {\n    min-width: 0 !important;\n  }\n\n  /* 状态摘要别太高，做成信息面板 */\n  .nr-dashboard-template div,\n  .nr-dashboard-template p {\n    color: var(--text) !important;\n  }\n\n  /* 加一个轻量 3D 顶部，不影响任何接口 */\n  #iot-dashboard-hero {\n    grid-column: 1 / -1;\n    min-height: 132px;\n    border-radius: 12px;\n    background:\n      linear-gradient(135deg, rgba(18, 83, 124, 0.96), rgba(32, 151, 205, 0.92)),\n      radial-gradient(circle at 82% 30%, rgba(255,255,255,0.3), transparent 25%);\n    box-shadow: 0 10px 24px rgba(20, 95, 143, 0.22);\n    color: #fff;\n    overflow: hidden;\n    position: relative;\n    display: grid;\n    grid-template-columns: 1fr 210px;\n    align-items: center;\n    padding: 18px 24px;\n    margin-bottom: 2px;\n  }\n\n  #iot-dashboard-hero h1 {\n    margin: 0 0 8px;\n    font-size: 28px;\n    font-weight: 950;\n  }\n\n  #iot-dashboard-hero p {\n    margin: 0;\n    color: rgba(255,255,255,0.84);\n    font-weight: 700;\n  }\n\n  .hero-tags {\n    display: flex;\n    flex-wrap: wrap;\n    gap: 8px;\n    margin-top: 14px;\n  }\n\n  .hero-tags span {\n    padding: 6px 10px;\n    border-radius: 999px;\n    background: rgba(255,255,255,0.15);\n    border: 1px solid rgba(255,255,255,0.2);\n    font-size: 12px;\n    font-weight: 800;\n  }\n\n  .mini-scene {\n    height: 106px;\n    perspective: 560px;\n    display: grid;\n    place-items: center;\n  }\n\n  .mini-box {\n    width: 78px;\n    height: 78px;\n    position: relative;\n    transform-style: preserve-3d;\n    animation: spinBox 6s linear infinite;\n  }\n\n  .mini-box span {\n    position: absolute;\n    width: 78px;\n    height: 78px;\n    border-radius: 8px;\n    border: 2px solid rgba(255,255,255,0.42);\n    background: linear-gradient(135deg, rgba(255,255,255,0.86), rgba(190,232,255,0.5));\n  }\n\n  .mini-box .f1 { transform: translateZ(39px); }\n  .mini-box .f2 { transform: rotateY(180deg) translateZ(39px); }\n  .mini-box .f3 { transform: rotateY(90deg) translateZ(39px); }\n  .mini-box .f4 { transform: rotateY(-90deg) translateZ(39px); }\n  .mini-box .f5 { transform: rotateX(90deg) translateZ(39px); }\n  .mini-box .f6 { transform: rotateX(-90deg) translateZ(39px); }\n\n  @keyframes spinBox {\n    from { transform: rotateX(-18deg) rotateY(0deg); }\n    to { transform: rotateX(-18deg) rotateY(360deg); }\n  }\n\n  @media (max-width: 1100px) {\n    .nr-dashboard-cardcontainer {\n      grid-template-columns: 1fr !important;\n      padding: 12px !important;\n    }\n\n    #iot-dashboard-hero {\n      grid-template-columns: 1fr;\n    }\n\n    .mini-scene {\n      display: none;\n    }\n  }\n</style>\n\n<script>\n(function () {\n  function addHero() {\n    if (document.getElementById(\"iot-dashboard-hero\")) return;\n    var container = document.querySelector(\".nr-dashboard-cardcontainer\");\n    if (!container) return;\n\n    var hero = document.createElement(\"div\");\n    hero.id = \"iot-dashboard-hero\";\n    hero.innerHTML = `\n      <div>\n        <h1>智能衣物回收箱</h1>\n        <p>实时监测、远程控制、告警联动、历史数据统一展示</p>\n        <div class=\"hero-tags\">\n          <span>ESP32</span>\n          <span>MQTT</span>\n          <span>SQLite</span>\n          <span>GPIO33 / GPIO12 / GPIO14</span>\n        </div>\n      </div>\n      <div class=\"mini-scene\">\n        <div class=\"mini-box\">\n          <span class=\"f1\"></span><span class=\"f2\"></span><span class=\"f3\"></span>\n          <span class=\"f4\"></span><span class=\"f5\"></span><span class=\"f6\"></span>\n        </div>\n      </div>\n    `;\n    container.prepend(hero);\n  }\n\n  setTimeout(addHero, 500);\n  setTimeout(addHero, 1500);\n})();\n</script>",
+        "storeOutMessages": false,
+        "fwdInMessages": false,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 520,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4722dddedfbeb6a1",
+        "type": "ui_template",
+        "z": "tab_dash",
+        "group": "",
+        "name": "专业仪表盘美化",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<style>\n  :root {\n    --bg: #f3f7fb;\n    --panel: #ffffff;\n    --panel-2: #f8fafc;\n    --line: #e2e8f0;\n    --text: #172033;\n    --muted: #64748b;\n    --blue: #1677c8;\n    --blue2: #22a6e8;\n    --green: #18b875;\n    --orange: #f59e0b;\n    --red: #ef4444;\n    --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);\n  }\n\n  body,\n  md-content,\n  .nr-dashboard-theme md-content {\n    background: var(--bg) !important;\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\n    color: var(--text) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar {\n    height: 60px !important;\n    min-height: 60px !important;\n    background: linear-gradient(90deg, #145f8f, #1687c7) !important;\n    box-shadow: 0 4px 18px rgba(20, 95, 143, 0.22) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar .md-toolbar-tools {\n    height: 60px !important;\n    padding-left: 28px !important;\n    font-size: 22px !important;\n    font-weight: 900 !important;\n  }\n\n  .nr-dashboard-theme md-tabs-wrapper {\n    background: #ffffff !important;\n    border-bottom: 1px solid var(--line) !important;\n  }\n\n  .nr-dashboard-theme md-tab-item {\n    color: var(--muted) !important;\n    font-weight: 800 !important;\n  }\n\n  .nr-dashboard-theme md-tab-item.md-active {\n    color: var(--blue) !important;\n  }\n\n  .nr-dashboard-theme md-ink-bar {\n    height: 3px !important;\n    background: var(--blue) !important;\n  }\n\n  .nr-dashboard-cardcontainer {\n    max-width: 1440px !important;\n    margin: 0 auto !important;\n    padding: 18px !important;\n  }\n\n  md-card,\n  .nr-dashboard-theme md-card {\n    border-radius: 8px !important;\n    background: var(--panel) !important;\n    border: 1px solid var(--line) !important;\n    box-shadow: var(--shadow) !important;\n    overflow: hidden !important;\n  }\n\n  .nr-dashboard-cardtitle {\n    color: var(--blue) !important;\n    font-size: 18px !important;\n    font-weight: 900 !important;\n    padding: 12px 16px 2px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge {\n    padding: 0 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge svg {\n    max-height: 132px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge text {\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\n    font-weight: 800 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button {\n    border-radius: 7px !important;\n    min-height: 42px !important;\n    font-size: 15px !important;\n    font-weight: 900 !important;\n    color: #fff !important;\n    background: linear-gradient(180deg, var(--blue2), var(--blue)) !important;\n    box-shadow: 0 8px 18px rgba(22, 135, 199, 0.22) !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button:hover {\n    filter: brightness(1.05);\n  }\n\n  .nr-dashboard-theme .nr-dashboard-chart {\n    min-height: 330px !important;\n  }\n\n  .nr-dashboard-template {\n    font-size: 14px !important;\n    line-height: 1.65 !important;\n    color: var(--text) !important;\n  }\n\n  #proDashHero {\n    margin-bottom: 14px;\n    border-radius: 10px;\n    background: linear-gradient(135deg, #104766, #1687c7);\n    color: #fff;\n    padding: 20px 24px;\n    display: grid;\n    grid-template-columns: 1fr 160px;\n    align-items: center;\n    box-shadow: 0 12px 30px rgba(20, 95, 143, 0.22);\n  }\n\n  #proDashHero h1 {\n    margin: 0 0 8px;\n    font-size: 28px;\n    font-weight: 950;\n  }\n\n  #proDashHero p {\n    margin: 0;\n    color: rgba(255,255,255,.82);\n    font-weight: 700;\n  }\n\n  .hero-tags {\n    display: flex;\n    gap: 8px;\n    margin-top: 14px;\n    flex-wrap: wrap;\n  }\n\n  .hero-tags span {\n    padding: 6px 10px;\n    border-radius: 999px;\n    background: rgba(255,255,255,.16);\n    border: 1px solid rgba(255,255,255,.22);\n    font-size: 12px;\n    font-weight: 800;\n  }\n\n  .cube-scene {\n    height: 96px;\n    perspective: 520px;\n    display: grid;\n    place-items: center;\n  }\n\n  .cube {\n    width: 70px;\n    height: 70px;\n    transform-style: preserve-3d;\n    position: relative;\n    animation: spin 6s linear infinite;\n  }\n\n  .cube i {\n    position: absolute;\n    width: 70px;\n    height: 70px;\n    border-radius: 8px;\n    border: 2px solid rgba(255,255,255,.45);\n    background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(190,232,255,.5));\n  }\n\n  .cube i:nth-child(1) { transform: translateZ(35px); }\n  .cube i:nth-child(2) { transform: rotateY(180deg) translateZ(35px); }\n  .cube i:nth-child(3) { transform: rotateY(90deg) translateZ(35px); }\n  .cube i:nth-child(4) { transform: rotateY(-90deg) translateZ(35px); }\n  .cube i:nth-child(5) { transform: rotateX(90deg) translateZ(35px); }\n  .cube i:nth-child(6) { transform: rotateX(-90deg) translateZ(35px); }\n\n  @keyframes spin {\n    from { transform: rotateX(-18deg) rotateY(0deg); }\n    to { transform: rotateX(-18deg) rotateY(360deg); }\n  }\n\n  @media (max-width: 900px) {\n    #proDashHero {\n      grid-template-columns: 1fr;\n    }\n\n    .cube-scene {\n      display: none;\n    }\n  }\n</style>\n\n<script>\n(function () {\n  function addHero() {\n    if (document.getElementById(\"proDashHero\")) return;\n    var container = document.querySelector(\".nr-dashboard-cardcontainer\");\n    if (!container) return;\n\n    var hero = document.createElement(\"div\");\n    hero.id = \"proDashHero\";\n    hero.innerHTML = `\n      <div>\n        <h1>智能衣物回收箱管理系统</h1>\n        <p>实时监测、远程控制、告警联动、历史数据统一看板</p>\n        <div class=\"hero-tags\">\n          <span>ESP32</span>\n          <span>MQTT</span>\n          <span>SQLite</span>\n          <span>GPIO33 投放门</span>\n          <span>GPIO12 维护门</span>\n          <span>GPIO14 告警灯</span>\n        </div>\n      </div>\n      <div class=\"cube-scene\">\n        <div class=\"cube\">\n          <i></i><i></i><i></i><i></i><i></i><i></i>\n        </div>\n      </div>\n    `;\n    container.prepend(hero);\n  }\n\n  setTimeout(addHero, 300);\n  setTimeout(addHero, 1200);\n})();\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 580,
+        "y": 560,
+        "wires": [
+            []
+        ]
     }
 ]

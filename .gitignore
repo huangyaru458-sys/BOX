@@ -1,0 +1,6 @@
+*.zip
+*.db
+node_modules/
+unpackage/
+.hbuilderx/uni-agent/
+project.private.config.json

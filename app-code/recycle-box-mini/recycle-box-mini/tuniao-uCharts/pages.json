@@ -1,0 +1,392 @@
+{
+  "easycom": {
+    "^tn-(.*)": "@/tuniao-ui/components/tn-$1/tn-$1.vue"
+  },
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{
+		  "path": "pages/index",
+		  "style": {
+		    "mp-weixin": {
+		      "disableScroll": true
+		    },
+		    "app-plus": {
+		      "bounce": "none"
+		    },
+		    "mp-alipay": {
+		      "allowsBounceVertical": "NO"
+		    },
+		    "mp-baidu": {
+		      "disableScroll": true
+		    }
+		  }
+		}
+	],
+  "subPackages": [{
+    "root":"homePages",
+    "pages": [{
+        "path": "content",
+        "style": {
+        "navigationBarTitleText": "富文本",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "map",
+        "style": {
+        "navigationBarTitleText": "地图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "word",
+        "style": {
+        "navigationBarTitleText": "词云图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "scatter",
+        "style": {
+        "navigationBarTitleText": "散点图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "radar",
+        "style": {
+        "navigationBarTitleText": "雷达图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "arcbar",
+        "style": {
+        "navigationBarTitleText": "进度条",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pie",
+        "style": {
+        "navigationBarTitleText": "饼状图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "bubble",
+        "style": {
+        "navigationBarTitleText": "气泡图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "gauge",
+        "style": {
+        "navigationBarTitleText": "仪表盘",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "column",
+        "style": {
+        "navigationBarTitleText": "柱状图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "funnel",
+        "style": {
+        "navigationBarTitleText": "漏斗图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "rose",
+        "style": {
+        "navigationBarTitleText": "玫瑰图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "candle",
+        "style": {
+        "navigationBarTitleText": "K线图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "bar",
+        "style": {
+        "navigationBarTitleText": "条状图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "mount",
+        "style": {
+        "navigationBarTitleText": "山峰图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "area",
+        "style": {
+        "navigationBarTitleText": "区域图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "line",
+        "style": {
+        "navigationBarTitleText": "折线图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "ring",
+        "style": {
+        "navigationBarTitleText": "环形图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "mix",
+        "style": {
+        "navigationBarTitleText": "混合图",
+        "enablePullDownRefresh": false
+        }
+      }]
+  }, {
+    "root":"vipPages",
+    "pages": [{
+        "path": "content",
+        "style": {
+        "navigationBarTitleText": "富文本",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "salary",
+        "style": {
+        "navigationBarTitleText": "月薪清单",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "diagnosis",
+        "style": {
+        "navigationBarTitleText": "数据诊断",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "income",
+        "style": {
+        "navigationBarTitleText": "收入明细",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "sport",
+        "style": {
+        "navigationBarTitleText": "运动监控",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "manage",
+        "style": {
+        "navigationBarTitleText": "理财持仓",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "file",
+        "style": {
+        "navigationBarTitleText": "文件类型",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "bank",
+        "style": {
+        "navigationBarTitleText": "银行账户",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "group",
+        "style": {
+        "navigationBarTitleText": "微信群统计",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "black",
+        "style": {
+        "navigationBarTitleText": "暗黑风格",
+        "enablePullDownRefresh": false,
+        "navigationBarTextStyle": "white" //因为这个页面是暗黑模式，所以顶部电量用白色
+        }
+      },
+      {
+        "path": "portrait",
+        "style": {
+        "navigationBarTitleText": "用户画像",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "system",
+        "style": {
+        "navigationBarTitleText": "猪猪系统",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "city",
+        "style": {
+        "navigationBarTitleText": "城市地图",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "power",
+        "style": {
+        "navigationBarTitleText": "电量电力",
+        "enablePullDownRefresh": false,
+        "navigationBarTextStyle": "white" //因为这个页面是暗黑模式，所以顶部电量用白色
+        }
+      },
+      {
+        "path": "wallet",
+        "style": {
+        "navigationBarTitleText": "钱包币值",
+        "enablePullDownRefresh": false
+        }
+      }]
+  }, {
+    "root":"newsPages",
+    "pages": [{
+        "path": "content",
+        "style": {
+        "navigationBarTitleText": "富文本",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages1",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages2",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages3",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages4",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages5",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages6",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages7",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages8",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages9",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages10",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages11",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages12",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages13",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      },
+      {
+        "path": "pages14",
+        "style": {
+        "navigationBarTitleText": "群友贡献",
+        "enablePullDownRefresh": false
+        }
+      }]
+  }, {
+    "root":"minePages",
+    "pages": [{
+        "path": "content",
+        "style": {
+        "navigationBarTitleText": "富文本",
+        "enablePullDownRefresh": false
+        }
+      }]
+  }],
+	"globalStyle": {
+	  "navigationStyle": "custom",
+	  "navigationBarTextStyle": "black",
+	  "navigationBarTitleText": "图鸟图表",
+	  "navigationBarBackgroundColor": "#F8F8F8",
+	  "backgroundColor": "#F8F8F8"
+	}
+}

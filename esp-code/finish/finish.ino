@@ -7,9 +7,9 @@
 #include <Keypad.h>
 #include <WebServer.h>
 #include <U8g2lib.h> 
-#define WIFI_SSID "hhhh"
-#define WIFI_PASS "huangyongmei66"
-#define MQTT_SERVER "10.94.163.228"
+#define WIFI_SSID "hhhhhh"
+#define WIFI_PASS "huangyaru"
+#define MQTT_SERVER "192.168.222.228"
 #define MQTT_PORT 1883
 #define MQTT_USER ""
 #define MQTT_PASS "" 
@@ -189,6 +189,7 @@ void drawOled();
 void handleSerialCommand();
 void handleKeypad();
 void httpServerLoop();
+void printSnapshot(const char *source);
   bool readDht11(float &temp, float &hum)  
 {
          uint8_t bits[5] =  
@@ -385,24 +386,15 @@ void closeBackDoor()
 
 void loadDeviceConfig()
 {
-    EEPROM.get(0, g_config);
-    if (g_config.magic != CONFIG_MAGIC || g_config.version != CONFIG_VERSION) {
-        memset(&g_config, 0, sizeof(g_config));
-        g_config.magic = CONFIG_MAGIC;
-        g_config.version = CONFIG_VERSION;
-        strncpy(g_config.wifiSsid, WIFI_SSID, sizeof(g_config.wifiSsid) - 1);
-        strncpy(g_config.wifiPass, WIFI_PASS, sizeof(g_config.wifiPass) - 1);
-        strncpy(g_config.mqttServer, MQTT_SERVER, sizeof(g_config.mqttServer) - 1);
-        g_config.mqttPort = MQTT_PORT;
-        saveDeviceConfig();
-        Serial.println("[CFG] default config saved");
-    }
-
-    g_config.wifiSsid[sizeof(g_config.wifiSsid) - 1] = '\0';
-    g_config.wifiPass[sizeof(g_config.wifiPass) - 1] = '\0';
-    g_config.mqttServer[sizeof(g_config.mqttServer) - 1] = '\0';
-    if (g_config.mqttPort == 0) g_config.mqttPort = MQTT_PORT;
-
+    memset(&g_config, 0, sizeof(g_config));
+    g_config.magic = CONFIG_MAGIC;
+    g_config.version = CONFIG_VERSION;
+    strncpy(g_config.wifiSsid, WIFI_SSID, sizeof(g_config.wifiSsid) - 1);
+    strncpy(g_config.wifiPass, WIFI_PASS, sizeof(g_config.wifiPass) - 1);
+    strncpy(g_config.mqttServer, MQTT_SERVER, sizeof(g_config.mqttServer) - 1);
+    g_config.mqttPort = MQTT_PORT;
+    saveDeviceConfig();
+    Serial.println("[CFG] EEPROM cleared, using code defaults");
     Serial.printf("[CFG] wifi ssid=%s mqtt=%s:%u\n", g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort);
 }
 
@@ -528,6 +520,7 @@ void applyDeviceConfig(JsonDocument &doc, const char *source)
                  g_sensorData.boxTiltAlert = false;
                  g_tiltConfirmSinceMs = 0;
          }
+         printSnapshot("SENSOR");
 
 }
 
@@ -634,7 +627,7 @@ void publishTelemetry()
         return;
     }
 
-    StaticJsonDocument<768> doc;
+    StaticJsonDocument<1024> doc;
     doc["deviceId"] = DEVICE_ID;
     doc["timestamp"] = (uint32_t)(millis() / 1000);
     doc["capacity"] = g_sensorData.capacity;
@@ -643,20 +636,28 @@ void publishTelemetry()
     doc["airQuality"] = g_sensorData.airQuality;
     doc["humanDetect"] = g_sensorData.humanDetect;
     doc["boxTiltAlert"] = g_sensorData.boxTiltAlert;
+    doc["tiltAngle"] = g_lastTiltAngle;
     doc["fanStatus"] = g_sensorData.fanStatus ? 1 : 0;
     doc["frontDoor"] = g_sensorData.frontDoor ? 1 : 0;
     doc["backDoor"] = g_sensorData.backDoor ? 1 : 0;
     doc["netMode"] = g_systemStatus.netMode;
+    doc["systemState"] = g_systemStatus.state == STATE_STANDBY ? "STANDBY" :
+                          g_systemStatus.state == STATE_PUT_IN ? "PUT_IN" :
+                          g_systemStatus.state == STATE_FULL_LOCK ? "FULL_LOCK" :
+                          g_systemStatus.state == STATE_ALARM ? "ALARM" :
+                          g_systemStatus.state == STATE_MAINTENANCE ? "MAINTENANCE" :
+                          g_systemStatus.state == STATE_AP_MODE ? "AP_MODE" : "INIT";
     doc["wifiSsid"] = g_config.wifiSsid;
     doc["mqttServer"] = g_config.mqttServer;
     doc["mqttPort"] = g_config.mqttPort;
     doc["staIp"] = WiFi.localIP().toString();
 
-    char buffer[768];
+    char buffer[1024];
     size_t len = serializeJson(doc, buffer, sizeof(buffer));
     bool ok = g_mqttClient.publish("device/clothes_box/telemetry", buffer, len);
     Serial.printf("[MQTT] telemetry publish %s len=%u\n", ok ? "ok" : "fail", (unsigned)len);
     Serial.printf("[MQTT] telemetry %s\n", buffer);
+    printSnapshot("MQTT");
 }
 
 void publishAlert(AlertType type, const char *msg)
@@ -739,7 +740,7 @@ void executeCommand(const char *cmd, const char *source)
         publishTelemetry();
         Serial.println("[ACT] alarm stop");
     } else if (strcmp(cmd, "STATUS") == 0) {
-        Serial.printf("[STATUS] front=%d back=%d fan=%d cap=%.1f temp=%.1f hum=%.1f air=%u wifi=%d mqtt=%d\n",
+        Serial.printf("[STATUS] front=%d back=%d fan=%d cap=%.1f temp=%.1f hum=%.1f air=%u tilt=%.1f wifi=%d mqtt=%d\n",
                       g_sensorData.frontDoor ? 1 : 0,
                       g_sensorData.backDoor ? 1 : 0,
                       g_sensorData.fanStatus ? 1 : 0,
@@ -747,6 +748,7 @@ void executeCommand(const char *cmd, const char *source)
                       g_sensorData.temperature,
                       g_sensorData.humidity,
                       g_sensorData.airQuality,
+                      g_lastTiltAngle,
                       g_systemStatus.wifiConnected ? 1 : 0,
                       g_systemStatus.mqttConnected ? 1 : 0);
     } else {
@@ -825,7 +827,9 @@ void connectWifi()
         Serial.println("[WiFi] failed, keep AP offline mode");
         g_systemStatus.wifiConnected = false;
         g_systemStatus.mqttConnected = false;
-        setupApMode();
+        if (g_systemStatus.state != STATE_AP_MODE) {
+            setupApMode();
+        }
     }
 }
 
@@ -907,7 +911,7 @@ void setupConfigPortal()
     g_configServer.on("/api/local/networks", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
 
     g_configServer.on("/api/local/status", HTTP_GET, []() {
-        StaticJsonDocument<512> doc;
+        StaticJsonDocument<1024> doc;
         doc["deviceId"] = DEVICE_ID;
         doc["wifiSsid"] = g_config.wifiSsid;
         doc["mqttServer"] = g_config.mqttServer;
@@ -915,12 +919,24 @@ void setupConfigPortal()
         doc["wifiConnected"] = g_systemStatus.wifiConnected;
         doc["mqttConnected"] = g_systemStatus.mqttConnected;
         doc["netMode"] = g_systemStatus.netMode;
+        doc["systemState"] = g_systemStatus.state == STATE_STANDBY ? "STANDBY" :
+                              g_systemStatus.state == STATE_PUT_IN ? "PUT_IN" :
+                              g_systemStatus.state == STATE_FULL_LOCK ? "FULL_LOCK" :
+                              g_systemStatus.state == STATE_ALARM ? "ALARM" :
+                              g_systemStatus.state == STATE_MAINTENANCE ? "MAINTENANCE" :
+                              g_systemStatus.state == STATE_AP_MODE ? "AP_MODE" : "INIT";
         doc["staIp"] = WiFi.localIP().toString();
         doc["apIp"] = WiFi.softAPIP().toString();
         doc["capacity"] = g_sensorData.capacity;
         doc["temperature"] = g_sensorData.temperature;
         doc["humidity"] = g_sensorData.humidity;
         doc["airQuality"] = g_sensorData.airQuality;
+        doc["humanDetect"] = g_sensorData.humanDetect;
+        doc["boxTiltAlert"] = g_sensorData.boxTiltAlert;
+        doc["tiltAngle"] = g_lastTiltAngle;
+        doc["fanStatus"] = g_sensorData.fanStatus ? 1 : 0;
+        doc["frontDoor"] = g_sensorData.frontDoor ? 1 : 0;
+        doc["backDoor"] = g_sensorData.backDoor ? 1 : 0;
         String out;
         serializeJson(doc, out);
         sendCors();
@@ -969,15 +985,19 @@ void handleConfigPortal()
          Serial.println(path);
           if (path == "/api/local/status")  
     {
-                 StaticJsonDocument<512> doc;
+                 StaticJsonDocument<1024> doc;
                  doc["capacity"] = g_sensorData.capacity;
                  doc["temperature"] = g_sensorData.temperature;
                  doc["humidity"] = g_sensorData.humidity;
                  doc["airQuality"] = g_sensorData.airQuality;
+                 doc["humanDetect"] = g_sensorData.humanDetect;
+                 doc["boxTiltAlert"] = g_sensorData.boxTiltAlert;
+                 doc["tiltAngle"] = g_lastTiltAngle;
                  doc["fanStatus"] = g_sensorData.fanStatus ? 1 : 0;
                  doc["frontDoor"] = g_sensorData.frontDoor ? 1 : 0;
                  doc["backDoor"] = g_sensorData.backDoor ? 1 : 0;
-                  char buffer[512];
+                 doc["netMode"] = g_systemStatus.netMode;
+                  char buffer[1024];
                  serializeJson(doc, buffer, sizeof(buffer));
                   Serial.println("HTTP/1.1 200 OK");
                  Serial.println("Content-Type: application/json");
@@ -1042,8 +1062,9 @@ void handleConfigPortal()
 {
          if (strcmp(g_systemStatus.netMode, "AP") != 0) return;
           if (Serial.available() > 0)  
-    {
-                 String line = Serial.readStringUntil('\r');
+     {
+                 String line = Serial.readStringUntil('\n');
+                 line.trim();
                  if (line.startsWith("GET ") || line.startsWith("POST "))  
         {
                          int space1 = line.indexOf(' ');
@@ -1054,7 +1075,8 @@ void handleConfigPortal()
                          if (method == "POST")  
             {
                                  while (!Serial.available()) delay(1);
-                                 body = Serial.readStringUntil('\r');
+                                 body = Serial.readStringUntil('\n');
+                                 body.trim();
 
             }
                           handleLocalRequest(path, body);
@@ -1074,7 +1096,7 @@ void drawOled()
          char line4[24];
           snprintf(line1, sizeof(line1), "ID:%s", DEVICE_ID);
          snprintf(line2, sizeof(line2), "T:%.1fC H:%.1f%%", g_sensorData.temperature, g_sensorData.humidity);
-         snprintf(line3, sizeof(line3), "CAP:%.0f%% AIR:%d%%", g_sensorData.capacity, g_sensorData.airQuality);
+         snprintf(line3, sizeof(line3), "CAP:%.0f%% AIR:%u%%", g_sensorData.capacity, g_sensorData.airQuality);
               const char *stateStr = "INIT";
          switch (g_systemStatus.state)  
     {
@@ -1102,22 +1124,67 @@ void drawOled()
 
 }
 
+void printSnapshot(const char *source)
+{
+    Serial.printf("[%s] DEV=%s NET=%s STATE=%d T=%.1fC H=%.1f%% CAP=%.1f%% AIR=%u%% TILT=%.1f FAN=%d FRONT=%d BACK=%d HUMAN=%d TILT_ALERT=%d WIFI=%d MQTT=%d\n",
+                  source,
+                  DEVICE_ID,
+                  g_systemStatus.netMode,
+                  (int)g_systemStatus.state,
+                  g_sensorData.temperature,
+                  g_sensorData.humidity,
+                  g_sensorData.capacity,
+                  g_sensorData.airQuality,
+                  g_lastTiltAngle,
+                  g_sensorData.fanStatus ? 1 : 0,
+                  g_sensorData.frontDoor ? 1 : 0,
+                  g_sensorData.backDoor ? 1 : 0,
+                  g_sensorData.humanDetect ? 1 : 0,
+                  g_sensorData.boxTiltAlert ? 1 : 0,
+                  g_systemStatus.wifiConnected ? 1 : 0,
+                  g_systemStatus.mqttConnected ? 1 : 0);
+}
+
 void handleSerialCommand()
 {
     if (!Serial.available()) {
         return;
     }
 
-    String line = Serial.readStringUntil('\n');
+    String line;
+    unsigned long start = millis();
+    while (millis() - start < 200) {
+        while (Serial.available()) {
+            char c = (char)Serial.read();
+            if (c == '\r' || c == '\n') {
+                line.trim();
+                if (line.length() == 0) {
+                    return;
+                }
+                if (line.startsWith("GET ") || line.startsWith("POST ")) {
+                    return;
+                }
+                line.toUpperCase();
+                executeCommand(line.c_str(), "SERIAL");
+                return;
+            }
+            line += c;
+            if (line.length() >= 96) {
+                line.trim();
+                if (line.startsWith("GET ") || line.startsWith("POST ")) {
+                    return;
+                }
+                line.toUpperCase();
+                executeCommand(line.c_str(), "SERIAL");
+                return;
+            }
+        }
+        delay(1);
+    }
+
     line.trim();
-    if (line.length() == 0) {
-        return;
-    }
-
-    if (line.startsWith("GET ") || line.startsWith("POST ")) {
-        return;
-    }
-
+    if (line.length() == 0) return;
+    if (line.startsWith("GET ") || line.startsWith("POST ")) return;
     line.toUpperCase();
     executeCommand(line.c_str(), "SERIAL");
 }
@@ -1297,7 +1364,7 @@ void loop()
         }
     }
 
-    if (!g_systemStatus.wifiConnected && millis() - g_lastWifiCheck > WIFI_RECONNECT_INTERVAL) {
+    if (!g_systemStatus.wifiConnected && g_systemStatus.state != STATE_AP_MODE && millis() - g_lastWifiCheck > WIFI_RECONNECT_INTERVAL) {
         g_lastWifiCheck = millis();
         connectWifi();
     }

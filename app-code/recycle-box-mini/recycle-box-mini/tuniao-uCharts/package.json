@@ -1,0 +1,29 @@
+{
+    "id": "tuniao-uCharts",
+    "name": "图鸟图表",
+    "displayName": "图鸟图表",
+    "version": "1.3.2",
+    "description": "图鸟图表，是 图鸟UI & uCharts 联合开发的前端图表，支持微信小程序、APP和H5。",
+    "keywords": [
+        "图鸟图表",
+        "uCharts",
+        "移动端",
+        "酷炫",
+        "统计监控数据看板"
+    ],
+    "dcloudext": {
+        "type": "pagetemplate-vue",
+        "sale": {
+            "regular": {
+                "price": "0.00"
+            },
+            "sourcecode": {
+                "price": "0.00"
+            }
+        }
+    },
+    "uni_modules": {
+        "dependencies": [],
+        "encrypt": []
+    }
+}
