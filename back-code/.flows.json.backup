@@ -1,0 +1,1854 @@
+[
+    {
+        "id": "tab_core",
+        "type": "tab",
+        "label": "数据采集",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "tab_api",
+        "type": "tab",
+        "label": "接口服务",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "tab_dash",
+        "type": "tab",
+        "label": "仪表盘",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "mqtt_broker_local",
+        "type": "mqtt-broker",
+        "name": "本地MQTT",
+        "broker": "127.0.0.1",
+        "port": "1883",
+        "clientid": "node-red-box",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": ""
+    },
+    {
+        "id": "sqlitedb_local",
+        "type": "sqlitedb",
+        "db": "iot_box.db",
+        "mode": "RWC"
+    },
+    {
+        "id": "ui_tab_main",
+        "type": "ui_tab",
+        "name": "智能衣物回收箱",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "ui_group_metrics",
+        "type": "ui_group",
+        "name": "实时监控",
+        "tab": "ui_tab_main",
+        "order": 1,
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "ui_group_control",
+        "type": "ui_group",
+        "name": "控制面板",
+        "tab": "ui_tab_main",
+        "order": 2,
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "ui_group_alerts",
+        "type": "ui_group",
+        "name": "告警信息",
+        "tab": "ui_tab_main",
+        "order": 3,
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "36376e76527722e6",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey",
+                "palette": "light"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
+    },
+    {
+        "id": "inj_init",
+        "type": "inject",
+        "z": "tab_core",
+        "name": "初始化建表",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 80,
+        "wires": [
+            [
+                "fn_init_schema"
+            ]
+        ]
+    },
+    {
+        "id": "fn_init_schema",
+        "type": "function",
+        "z": "tab_core",
+        "name": "初始化建表",
+        "func": "const sqls=['CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT UNIQUE,device_name TEXT,location TEXT,online_status INTEGER DEFAULT 0,last_seen TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,online INTEGER DEFAULT 0,last_ip TEXT,mqtt_online INTEGER DEFAULT 0,battery REAL,notes TEXT)','CREATE TABLE IF NOT EXISTS device_latest_status (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT UNIQUE,capacity REAL,temperature REAL,humidity REAL,air_quality INTEGER,human_detect INTEGER,box_tilt_alert INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,net_mode TEXT,updated_at TEXT)','CREATE TABLE IF NOT EXISTS device_history (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,timestamp TEXT,capacity REAL,temperature REAL,humidity REAL,air_quality INTEGER,human_detect INTEGER,box_tilt_alert INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,net_mode TEXT)','CREATE TABLE IF NOT EXISTS device_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,alert_type TEXT,alert_msg TEXT,alert_level TEXT,is_ack INTEGER DEFAULT 0,created_at TEXT)','CREATE TABLE IF NOT EXISTS device_commands (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,action TEXT,source TEXT,result TEXT,created_at TEXT,executed_at TEXT)','CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT,password_hash TEXT,token TEXT,role TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)','CREATE TABLE IF NOT EXISTS telemetry (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,temperature REAL,humidity REAL,capacity REAL,air_quality REAL,human_detect INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,tilt_angle REAL,sensor_faults TEXT,buzzer_mode TEXT,raw_json TEXT)','CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,alert_type TEXT NOT NULL,alert_msg TEXT NOT NULL,is_ack INTEGER DEFAULT 0)','CREATE TABLE IF NOT EXISTS commands (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,action TEXT NOT NULL,status TEXT NOT NULL,source TEXT,raw_json TEXT)','INSERT OR IGNORE INTO devices (device_id,device_name,location,online_status,last_seen,online,mqtt_online) VALUES (\\'ESP32_BOX_001\\',\\'???????\\',\\'???\\',0,\\'???\\',0,0)','INSERT OR IGNORE INTO admin_users (username,password_hash,token,role) VALUES (\\'admin\\',\\'demo_hash\\',\\'admin_auth_secret01\\',\\'admin\\')']; sqls.forEach((sql,i)=>setTimeout(()=>node.send({topic:sql,payload:[]}),i*20)); return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 80,
+        "wires": [
+            [
+                "db_core"
+            ]
+        ]
+    },
+    {
+        "id": "inj_cleanup",
+        "type": "inject",
+        "z": "tab_core",
+        "name": "清理旧数据",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "43200",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 130,
+        "wires": [
+            [
+                "fn_cleanup"
+            ]
+        ]
+    },
+    {
+        "id": "fn_cleanup",
+        "type": "function",
+        "z": "tab_core",
+        "name": "清理旧数据",
+        "func": "const cutoff=Date.now()-30*86400000;return[{topic:'DELETE FROM telemetry WHERE ts < $p1',payload:[cutoff]},{topic:'DELETE FROM alerts WHERE ts < $p1',payload:[cutoff]},{topic:'DELETE FROM commands WHERE ts < $p1',payload:[cutoff]}];",
+        "outputs": 3,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 130,
+        "wires": [
+            [
+                "db_core"
+            ],
+            [
+                "db_core"
+            ],
+            [
+                "db_core"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_in_telemetry",
+        "type": "mqtt in",
+        "z": "tab_core",
+        "name": "遥测输入",
+        "topic": "device/clothes_box/telemetry",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "mqtt_broker_local",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 220,
+        "wires": [
+            [
+                "json_telemetry"
+            ]
+        ]
+    },
+    {
+        "id": "json_telemetry",
+        "type": "json",
+        "z": "tab_core",
+        "name": "解析JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 350,
+        "y": 220,
+        "wires": [
+            [
+                "fn_telemetry"
+            ]
+        ]
+    },
+    {
+        "id": "fn_telemetry",
+        "type": "function",
+        "z": "tab_core",
+        "name": "遥测处理",
+        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst front = !!(d.frontLight || d.frontDoor || d.front_door);\nconst back = !!(d.backLight || d.backDoor || d.back_door);\n\nconst data = {\n  deviceId: d.deviceId || d.device_id || 'ESP32_BOX_001',\n  temperature: Number(d.temperature || d.temp || 0),\n  humidity: Number(d.humidity || d.hum || 0),\n  capacity: Number(d.capacity || d.fullness || 0),\n  airQuality: Number(d.airQuality || d.air_quality || d.mq135 || 0),\n  humanDetect: !!(d.humanDetect || d.human_detect || d.pir),\n  fanStatus: !!(d.fanStatus || d.fan_status),\n  frontLight: front,\n  backLight: back,\n  frontDoor: front,\n  backDoor: back,\n  tiltAngle: Number(d.tiltAngle || d.tilt_angle || 0),\n  sensorFaults: Array.isArray(d.sensorFaults) ? d.sensorFaults : (Array.isArray(d.sensor_faults) ? d.sensor_faults : []),\n  buzzerMode: d.buzzerMode || d.buzzer_mode || 'off',\n  netMode: d.netMode || d.net_mode || 'STA',\n  systemState: d.systemState || 'STANDBY',\n  lastSeen: ts,\n  mqttOnline: true\n};\n\nglobal.set('latestTelemetry', data);\nglobal.set('latestTelemetryRaw', d);\n\nconst status = [\n  '设备: ' + data.deviceId,\n  '在线: 是',\n  '温度: ' + data.temperature.toFixed(1) + ' C',\n  '湿度: ' + data.humidity.toFixed(1) + ' %',\n  '满载率: ' + data.capacity.toFixed(1) + ' %',\n  '空气质量: ' + data.airQuality,\n  '倾角: ' + data.tiltAngle.toFixed(1) + ' deg',\n  '风扇: ' + (data.fanStatus ? '开' : '关'),\n  '前门: ' + (data.frontLight ? '开' : '关'),\n  '后门: ' + (data.backLight ? '开' : '关'),\n  '故障: ' + (data.sensorFaults.length ? data.sensorFaults.join(',') : '无')\n].join('\\n');\n\nreturn [\n  { payload: data.temperature, topic: 'temperature' },\n  { payload: data.humidity, topic: 'humidity' },\n  { payload: data.capacity, topic: 'capacity' },\n  { payload: data.airQuality, topic: 'airQuality' },\n  { payload: data.tiltAngle, topic: 'tiltAngle' },\n  { payload: status },\n  { topic: 'INSERT INTO telemetry (device_id,ts,temperature,humidity,capacity,air_quality,human_detect,fan_status,front_door,back_door,tilt_angle,sensor_faults,buzzer_mode,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12,$p13,$p14)', payload: [data.deviceId, ts, data.temperature, data.humidity, data.capacity, data.airQuality, data.humanDetect ? 1 : 0, data.fanStatus ? 1 : 0, data.frontLight ? 1 : 0, data.backLight ? 1 : 0, data.tiltAngle, JSON.stringify(data.sensorFaults), data.buzzerMode, JSON.stringify(d)] },\n  { topic: 'INSERT INTO devices (device_id,device_name,online,last_seen,mqtt_online) VALUES ($p1,$p2,$p3,$p4,$p5) ON CONFLICT(device_id) DO UPDATE SET device_name=excluded.device_name,online=excluded.online,last_seen=excluded.last_seen,mqtt_online=excluded.mqtt_online', payload: [data.deviceId, 'ESP32_BOX_001', 1, ts, 1] }\n];",
+        "outputs": 9,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 220,
+        "wires": [
+            [
+                "eeba1c3f3794b3fa"
+            ],
+            [
+                "ee9583249925f0d4"
+            ],
+            [
+                "c6fa33282357f471"
+            ],
+            [
+                "fd532a8cbe18bf50"
+            ],
+            [
+                "49f60e2b1543a408"
+            ],
+            [
+                "debug_telemetry"
+            ],
+            [
+                "db_core"
+            ],
+            [
+                "db_core"
+            ],
+            [
+                "375c6dd203d4e479"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_in_alert",
+        "type": "mqtt in",
+        "z": "tab_core",
+        "name": "告警输入",
+        "topic": "device/clothes_box/alert",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "mqtt_broker_local",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 140,
+        "y": 290,
+        "wires": [
+            [
+                "json_alert"
+            ]
+        ]
+    },
+    {
+        "id": "json_alert",
+        "type": "json",
+        "z": "tab_core",
+        "name": "解析JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 350,
+        "y": 290,
+        "wires": [
+            [
+                "fn_alert"
+            ]
+        ]
+    },
+    {
+        "id": "fn_alert",
+        "type": "function",
+        "z": "tab_core",
+        "name": "告警处理",
+        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst type = d.alertType || d.type || 'ALERT';\nconst text = d.alertMsg || d.message || d.msg || JSON.stringify(d);\nconst suppressUntil = global.get('alarmSuppressUntil') || 0;\nconst suppressed = Date.now() < suppressUntil && /alarm|tilt|door|buzzer|fire|smoke/i.test(type + ' ' + text);\n\nconst list = global.get('alertList') || [];\nlist.unshift({ id: ts, deviceId: d.deviceId || d.device_id || 'ESP32_BOX_001', type: type, text: text, ts: ts, suppressed: suppressed });\nglobal.set('alertList', list.slice(0, 20));\n\nconst view = list.slice(0, 20).map(function (i) {\n    return (i.suppressed ? '[抑制] ' : '') + '[' + new Date(i.ts).toLocaleString('zh-CN', { hour12: false }) + '] ' + i.type + ' - ' + i.text;\n}).join('\\n');\n\nreturn [\n    { payload: view },\n    { topic: 'INSERT INTO alerts (device_id,ts,alert_type,alert_msg,is_ack) VALUES ($p1,$p2,$p3,$p4,$p5)', payload: [d.deviceId || d.device_id || 'ESP32_BOX_001', ts, type, text, suppressed ? 1 : 0] }\n];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 320,
+        "wires": [
+            [
+                "966142f757d7bc76"
+            ],
+            [
+                "db_core"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_in_ack",
+        "type": "mqtt in",
+        "z": "tab_core",
+        "name": "控制应答",
+        "topic": "device/clothes_box/control_ack",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "mqtt_broker_local",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 140,
+        "y": 350,
+        "wires": [
+            [
+                "json_ack"
+            ]
+        ]
+    },
+    {
+        "id": "json_ack",
+        "type": "json",
+        "z": "tab_core",
+        "name": "解析JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 350,
+        "y": 350,
+        "wires": [
+            [
+                "fn_ack"
+            ]
+        ]
+    },
+    {
+        "id": "fn_ack",
+        "type": "function",
+        "z": "tab_core",
+        "name": "应答记录",
+        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst action = d.action || d.cmd || d.command || 'ACK';\nconst status = d.status || ((d.success === false || d.ok === false) ? 'failed' : 'ack');\nreturn [{ topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [d.deviceId || d.device_id || 'ESP32_BOX_001', ts, action, status, 'mqtt_ack', JSON.stringify(d)] }];",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 400,
+        "wires": [
+            [
+                "db_core"
+            ]
+        ]
+    },
+    {
+        "id": "inj_refresh",
+        "type": "inject",
+        "z": "tab_core",
+        "name": "刷新状态",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "4",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 410,
+        "wires": [
+            [
+                "fn_refresh"
+            ]
+        ]
+    },
+    {
+        "id": "fn_refresh",
+        "type": "function",
+        "z": "tab_core",
+        "name": "刷新摘要",
+        "func": "const d = global.get('latestTelemetry') || {};\nconst ts = d.lastSeen || 0;\nconst age = ts ? Date.now() - ts : null;\nconst online = age !== null && age < 15000;\nconst front = !!(d.frontLight || d.frontDoor);\nconst back = !!(d.backLight || d.backDoor);\nconst suppressed = (global.get('alarmSuppressUntil') || 0) > Date.now();\n\nconst status = [\n  '设备: ' + (d.deviceId || 'ESP32_BOX_001'),\n  '在线: ' + (online ? '是' : '否'),\n  '最后上报: ' + (ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : '未知'),\n  '离线时长: ' + (age === null ? '未知' : Math.floor(age / 1000) + ' 秒'),\n  '风扇: ' + (d.fanStatus ? '开' : '关'),\n  '前门: ' + (front ? '开' : '关'),\n  '后门: ' + (back ? '开' : '关'),\n  '告警抑制: ' + (suppressed ? '开启' : '关闭')\n].join('\\n');\n\nreturn [{ payload: status }];",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 410,
+        "wires": [
+            [
+                "cb630220e2a2fd7c"
+            ]
+        ]
+    },
+    {
+        "id": "catch_all",
+        "type": "catch",
+        "z": "tab_core",
+        "name": "错误捕获",
+        "scope": null,
+        "uncaught": false,
+        "x": 150,
+        "y": 520,
+        "wires": [
+            [
+                "debug_error"
+            ]
+        ]
+    },
+    {
+        "id": "status_mqtt",
+        "type": "status",
+        "z": "tab_core",
+        "name": "节点状态",
+        "scope": [
+            "mqtt_in_telemetry",
+            "mqtt_in_alert",
+            "mqtt_in_ack",
+            "mqtt_out_control",
+            "mqtt_out_config",
+            "db_exec"
+        ],
+        "x": 170,
+        "y": 570,
+        "wires": [
+            [
+                "fn_status_log"
+            ]
+        ]
+    },
+    {
+        "id": "fn_status_log",
+        "type": "function",
+        "z": "tab_core",
+        "name": "状态日志",
+        "func": "node.warn((msg.status&&msg.status.text?msg.status.text:'status')+' @ '+(msg.status&&msg.status.source&&msg.status.source.name?msg.status.source.name:''));return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 570,
+        "wires": [
+            [
+                "debug_status"
+            ]
+        ]
+    },
+    {
+        "id": "debug_error",
+        "type": "debug",
+        "z": "tab_core",
+        "name": "错误输出",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "debug_status",
+        "type": "debug",
+        "z": "tab_core",
+        "name": "状态输出",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 610,
+        "y": 570,
+        "wires": []
+    },
+    {
+        "id": "debug_telemetry",
+        "type": "debug",
+        "z": "tab_core",
+        "name": "遥测调试",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 790,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "db_core",
+        "type": "sqlite",
+        "z": "tab_core",
+        "mydb": "sqlitedb_local",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "SQLite执行",
+        "x": 820,
+        "y": 180,
+        "wires": [
+            [
+                "debug_db_core"
+            ]
+        ]
+    },
+    {
+        "id": "debug_db_core",
+        "type": "debug",
+        "z": "tab_core",
+        "name": "数据库调试",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1030,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "eeba1c3f3794b3fa",
+        "type": "ui_gauge",
+        "z": "tab_core",
+        "name": "温度",
+        "group": "ui_group_metrics",
+        "order": 1,
+        "width": 3,
+        "height": 3,
+        "gtype": "gage",
+        "title": "温度",
+        "label": "°C",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 50,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "25",
+        "seg2": "35",
+        "x": 970,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "fd532a8cbe18bf50",
+        "type": "ui_gauge",
+        "z": "tab_core",
+        "name": "湿度",
+        "group": "ui_group_metrics",
+        "order": 2,
+        "width": 3,
+        "height": 3,
+        "gtype": "gage",
+        "title": "湿度",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b5ad",
+            "#f4b400",
+            "#ca3838"
+        ],
+        "seg1": "60",
+        "seg2": "85",
+        "x": 950,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "49f60e2b1543a408",
+        "type": "ui_gauge",
+        "z": "tab_core",
+        "name": "满载率",
+        "group": "ui_group_metrics",
+        "order": 3,
+        "width": 3,
+        "height": 3,
+        "gtype": "gage",
+        "title": "满载率",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "60",
+        "seg2": "90",
+        "x": 770,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "c6fa33282357f471",
+        "type": "ui_gauge",
+        "z": "tab_core",
+        "name": "空气质量",
+        "group": "ui_group_metrics",
+        "order": 4,
+        "width": 3,
+        "height": 3,
+        "gtype": "gage",
+        "title": "空气质量",
+        "label": "ppm",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 1000,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "300",
+        "seg2": "700",
+        "x": 840,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "ee9583249925f0d4",
+        "type": "ui_gauge",
+        "z": "tab_core",
+        "name": "倾斜角",
+        "group": "ui_group_metrics",
+        "order": 5,
+        "width": 3,
+        "height": 3,
+        "gtype": "gage",
+        "title": "倾斜角",
+        "label": "°",
+        "format": "{{value}}",
+        "min": -90,
+        "max": 90,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "25",
+        "seg2": "45",
+        "x": 1030,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "375c6dd203d4e479",
+        "type": "ui_chart",
+        "z": "tab_core",
+        "name": "实时曲线",
+        "group": "ui_group_metrics",
+        "order": 6,
+        "width": 12,
+        "height": 6,
+        "label": "实时曲线",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "暂无数据",
+        "dot": "false",
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "24",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#ff7f0e",
+            "#2ca02c",
+            "#d62728"
+        ],
+        "outputs": 1,
+        "x": 840,
+        "y": 560,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cb630220e2a2fd7c",
+        "type": "ui_template",
+        "z": "tab_core",
+        "group": "ui_group_metrics",
+        "name": "状态摘要",
+        "order": 7,
+        "width": 12,
+        "height": 4,
+        "format": "<div style=\"white-space:pre-wrap;font-family:monospace;line-height:1.6\">{{msg.payload}}</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "x": 580,
+        "y": 440,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "966142f757d7bc76",
+        "type": "ui_template",
+        "z": "tab_core",
+        "group": "ui_group_alerts",
+        "name": "告警列表",
+        "order": 1,
+        "width": 12,
+        "height": 6,
+        "format": "<div style=\"white-space:pre-wrap;font-family:monospace;line-height:1.6\">{{msg.payload}}</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "x": 920,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "http_status",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "状态接口",
+        "url": "/api/v1/box/status",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 60,
+        "wires": [
+            [
+                "fn_api_status"
+            ]
+        ]
+    },
+    {
+        "id": "fn_api_status",
+        "type": "function",
+        "z": "tab_api",
+        "name": "状态JSON",
+        "func": "const d = global.get('latestTelemetry') || { deviceId: 'ESP32_BOX_001', temperature: 0, humidity: 0, capacity: 0, airQuality: 0, humanDetect: false, fanStatus: false, frontLight: false, backLight: false, frontDoor: false, backDoor: false, tiltAngle: 0, sensorFaults: [], buzzerMode: 'off', netMode: 'STA', systemState: 'OFFLINE', lastSeen: 0, mqttOnline: false, mqttBrokerOnline: true };\nconst age = d.lastSeen ? Date.now() - d.lastSeen : null;\nconst front = Boolean(d.frontLight ?? d.frontDoor ?? d.front_door ?? false);\nconst back = Boolean(d.backLight ?? d.backDoor ?? d.back_door ?? false);\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { ...d, frontLight: front, frontDoor: front, backLight: back, backDoor: back, online: age !== null && age < 15000, lastTelemetryAgeMs: age, mqttBrokerOnline: true, systemState: d.systemState || (age !== null && age < 15000 ? 'STANDBY' : 'OFFLINE') } };\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 60,
+        "wires": [
+            [
+                "http_resp_status"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_status",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 600,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "http_history",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "历史接口",
+        "url": "/api/v1/box/history",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 120,
+        "wires": [
+            [
+                "fn_history_query"
+            ]
+        ]
+    },
+    {
+        "id": "fn_history_query",
+        "type": "function",
+        "z": "tab_api",
+        "name": "历史查询SQL",
+        "func": "const q=msg.req&&msg.req.query?msg.req.query:{};const deviceId=q.deviceId||'ESP32_BOX_001';const limit=Math.max(1,Math.min(500,Number(q.limit||24)));msg.topic='SELECT * FROM telemetry WHERE device_id = $p1 ORDER BY ts DESC LIMIT $p2';msg.payload=[deviceId,limit];msg._queryType='history';return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 120,
+        "wires": [
+            [
+                "db_exec"
+            ]
+        ]
+    },
+    {
+        "id": "fn_history_fmt",
+        "type": "function",
+        "z": "tab_api",
+        "name": "历史返回",
+        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];rows.reverse();msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{timeline:rows.map(r=>new Date(r.ts).toLocaleTimeString('zh-CN',{hour12:false})),tempData:rows.map(r=>Number(r.temperature||0)),humidityData:rows.map(r=>Number(r.humidity||0)),airData:rows.map(r=>Number(r.air_quality||0)),capacityData:rows.map(r=>Number(r.capacity||0)),tiltData:rows.map(r=>Number(r.tilt_angle||0))}};return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 120,
+        "wires": [
+            [
+                "http_resp_history"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_history",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 800,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "http_devices",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "设备接口",
+        "url": "/api/v1/box/devices",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 180,
+        "wires": [
+            [
+                "fn_devices_query"
+            ]
+        ]
+    },
+    {
+        "id": "fn_devices_query",
+        "type": "function",
+        "z": "tab_api",
+        "name": "设备查询SQL",
+        "func": "msg.topic='SELECT * FROM devices ORDER BY last_seen DESC';msg.payload=[];msg._queryType='devices';return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 180,
+        "wires": [
+            [
+                "db_exec"
+            ]
+        ]
+    },
+    {
+        "id": "fn_devices_fmt",
+        "type": "function",
+        "z": "tab_api",
+        "name": "设备返回",
+        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];const now=Date.now();msg.statusCode=200;msg.payload={code:200,msg:'ok',data:rows.map(r=>({deviceId:r.device_id,deviceName:r.device_name,online:Boolean(r.online)&&now-Number(r.last_seen||0)<15000,mqttOnline:Boolean(r.mqtt_online),lastSeen:r.last_seen?new Date(r.last_seen).toLocaleString('zh-CN',{hour12:false}):'未知',lastIp:r.last_ip||''}))};return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 180,
+        "wires": [
+            [
+                "http_resp_devices"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_devices",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 800,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "http_alerts",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "告警接口",
+        "url": "/api/v1/box/alerts",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 240,
+        "wires": [
+            [
+                "fn_alerts_query"
+            ]
+        ]
+    },
+    {
+        "id": "fn_alerts_query",
+        "type": "function",
+        "z": "tab_api",
+        "name": "告警查询SQL",
+        "func": "const q=msg.req&&msg.req.query?msg.req.query:{};const deviceId=q.deviceId||'ESP32_BOX_001';msg.topic='SELECT * FROM alerts WHERE device_id = $p1 ORDER BY ts DESC LIMIT 100';msg.payload=[deviceId];msg._queryType='alerts';return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 240,
+        "wires": [
+            [
+                "db_exec"
+            ]
+        ]
+    },
+    {
+        "id": "fn_alerts_fmt",
+        "type": "function",
+        "z": "tab_api",
+        "name": "告警返回",
+        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];msg.statusCode=200;msg.payload={code:200,msg:'ok',data:rows.map(r=>({id:r.id,deviceId:r.device_id,alertType:r.alert_type,alertMsg:r.alert_msg,is_ack:Boolean(r.is_ack),time:new Date(r.ts).toLocaleString('zh-CN',{hour12:false})}))};return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 240,
+        "wires": [
+            [
+                "http_resp_alerts"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_alerts",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 800,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "http_commands",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "指令接口",
+        "url": "/api/v1/box/commands",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 300,
+        "wires": [
+            [
+                "fn_commands_query"
+            ]
+        ]
+    },
+    {
+        "id": "fn_commands_query",
+        "type": "function",
+        "z": "tab_api",
+        "name": "指令查询SQL",
+        "func": "msg.topic='SELECT * FROM commands ORDER BY ts DESC LIMIT 100';msg.payload=[];msg._queryType='commands';return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 300,
+        "wires": [
+            [
+                "db_exec"
+            ]
+        ]
+    },
+    {
+        "id": "fn_commands_fmt",
+        "type": "function",
+        "z": "tab_api",
+        "name": "指令返回",
+        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];msg.statusCode=200;msg.payload={code:200,msg:'ok',data:rows.map(r=>({id:r.id,deviceId:r.device_id,action:r.action,status:r.status,source:r.source,time:new Date(r.ts).toLocaleString('zh-CN',{hour12:false})}))};return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 300,
+        "wires": [
+            [
+                "http_resp_commands"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_commands",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 800,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "http_health",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "健康检查",
+        "url": "/api/v1/box/health",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 360,
+        "wires": [
+            [
+                "fn_health"
+            ]
+        ]
+    },
+    {
+        "id": "fn_health",
+        "type": "function",
+        "z": "tab_api",
+        "name": "健康JSON",
+        "func": "msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{httpPort:1880,mqttPort:1883,mqttBrokerOnline:true,db:'iot_box.db'}};return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 360,
+        "wires": [
+            [
+                "http_resp_health"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_health",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 580,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "http_control",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "控制接口",
+        "url": "/api/v1/box/control",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 440,
+        "wires": [
+            [
+                "json_control"
+            ]
+        ]
+    },
+    {
+        "id": "json_control",
+        "type": "json",
+        "z": "tab_api",
+        "name": "解析JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 340,
+        "y": 440,
+        "wires": [
+            [
+                "fn_control"
+            ]
+        ]
+    },
+    {
+        "id": "fn_control",
+        "type": "function",
+        "z": "tab_api",
+        "name": "控制下发",
+        "func": "const body = msg.payload || {};\nconst latest = global.get('latestTelemetry') || {};\nconst age = latest.lastSeen ? Date.now() - latest.lastSeen : 1e12;\nconst action = body.action || body.command;\nconst deviceId = body.deviceId || latest.deviceId || 'ESP32_BOX_001';\n\nif (body.adminToken && body.adminToken !== 'admin_auth_secret01') {\n  msg.statusCode = 401;\n  msg.payload = { code: 401, msg: '管理员Token错误' };\n  return [null, null, msg];\n}\n\nif (!action) {\n  msg.statusCode = 400;\n  msg.payload = { code: 400, msg: '缺少action' };\n  return [null, null, msg];\n}\n\nif (age > 15000) {\n  msg.statusCode = 409;\n  msg.payload = { code: 409, msg: '设备离线，禁止控制' };\n  return [\n    null,\n    { topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [deviceId, Date.now(), action, 'rejected', 'http', JSON.stringify(body)] },\n    msg\n  ];\n}\n\nif (action === 'ALARM_STOP') {\n  global.set('alarmSuppressUntil', Date.now() + 300000);\n}\n\nconst cmd = { deviceId: deviceId, cmd: action, action: action, ts: Date.now() };\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { sent: true, topic: 'device/clothes_box/control', command: cmd } };\n\nreturn [\n  { topic: 'device/clothes_box/control', payload: JSON.stringify(cmd) },\n  { topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [deviceId, Date.now(), action, 'sent', 'http', JSON.stringify(body)] },\n  msg\n];",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 440,
+        "wires": [
+            [
+                "mqtt_out_control"
+            ],
+            [
+                "db_exec"
+            ],
+            [
+                "http_resp_control"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_control",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 820,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "http_config",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "配置接口",
+        "url": "/api/v1/box/config",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 500,
+        "wires": [
+            [
+                "json_config"
+            ]
+        ]
+    },
+    {
+        "id": "json_config",
+        "type": "json",
+        "z": "tab_api",
+        "name": "解析JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 340,
+        "y": 500,
+        "wires": [
+            [
+                "fn_config"
+            ]
+        ]
+    },
+    {
+        "id": "fn_config",
+        "type": "function",
+        "z": "tab_api",
+        "name": "配置下发",
+        "func": "const body=msg.payload||{};if(body.adminToken&&body.adminToken!=='admin_auth_secret01'){msg.statusCode=401;msg.payload={code:401,msg:'管理员Token错误'};return [null,msg];}const cfg={deviceId:body.deviceId||'ESP32_BOX_001',mqttServer:body.mqttServer||'192.168.34.228',mqttPort:Number(body.mqttPort||1883),thresholds:body.thresholds||{},ts:Date.now()};msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{sent:true,topic:'device/clothes_box/config',config:cfg}};return [{topic:'device/clothes_box/config',payload:JSON.stringify(cfg)},msg];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 500,
+        "wires": [
+            [
+                "mqtt_out_config"
+            ],
+            [
+                "http_resp_config"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_config",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 790,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "http_alerts_read",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "告警已读",
+        "url": "/api/v1/box/alerts/read",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 560,
+        "wires": [
+            [
+                "json_alerts_read"
+            ]
+        ]
+    },
+    {
+        "id": "json_alerts_read",
+        "type": "json",
+        "z": "tab_api",
+        "name": "解析JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 340,
+        "y": 560,
+        "wires": [
+            [
+                "fn_alerts_read"
+            ]
+        ]
+    },
+    {
+        "id": "fn_alerts_read",
+        "type": "function",
+        "z": "tab_api",
+        "name": "告警已读SQL",
+        "func": "const body=msg.payload||{};const deviceId=body.deviceId||'ESP32_BOX_001';if(body.id){msg.topic='UPDATE alerts SET is_ack = 1 WHERE id = $p1';msg.payload=[body.id];}else{msg.topic='UPDATE alerts SET is_ack = 1 WHERE device_id = $p1';msg.payload=[deviceId];}msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{updated:true}};return [msg,null];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 560,
+        "wires": [
+            [
+                "db_exec"
+            ],
+            [
+                "http_resp_alerts_read"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_alerts_read",
+        "type": "http response",
+        "z": "tab_api",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 800,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "mqtt_out_control",
+        "type": "mqtt out",
+        "z": "tab_api",
+        "name": "控制输出",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "broker": "mqtt_broker_local",
+        "x": 820,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "mqtt_out_config",
+        "type": "mqtt out",
+        "z": "tab_api",
+        "name": "配置输出",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "broker": "mqtt_broker_local",
+        "x": 800,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "db_exec",
+        "type": "sqlite",
+        "z": "tab_api",
+        "mydb": "sqlitedb_local",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "SQLite执行",
+        "x": 600,
+        "y": 650,
+        "wires": [
+            [
+                "fn_db_router"
+            ]
+        ]
+    },
+    {
+        "id": "fn_db_router",
+        "type": "function",
+        "z": "tab_api",
+        "name": "结果分发",
+        "func": "if(msg._queryType==='history'){return [msg,null,null,null];}if(msg._queryType==='devices'){return [null,msg,null,null];}if(msg._queryType==='alerts'){return [null,null,msg,null];}if(msg._queryType==='commands'){return [null,null,null,msg];}return null;",
+        "outputs": 4,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 650,
+        "wires": [
+            [
+                "fn_history_fmt"
+            ],
+            [
+                "fn_devices_fmt"
+            ],
+            [
+                "fn_alerts_fmt"
+            ],
+            [
+                "fn_commands_fmt"
+            ]
+        ]
+    },
+    {
+        "id": "http_compat_latest",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "兼容最新",
+        "url": "/api/data/latest",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 620,
+        "wires": [
+            [
+                "fn_api_status"
+            ]
+        ]
+    },
+    {
+        "id": "http_compat_history",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "兼容历史",
+        "url": "/api/data/history",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 680,
+        "wires": [
+            [
+                "fn_compat_history"
+            ]
+        ]
+    },
+    {
+        "id": "fn_compat_history",
+        "type": "function",
+        "z": "tab_api",
+        "name": "兼容历史参数",
+        "func": "const q=msg.req&&msg.req.query?msg.req.query:{};msg.req.query={deviceId:q.device_id||q.deviceId||'ESP32_BOX_001',limit:q.limit||50};return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 680,
+        "wires": [
+            [
+                "fn_history_query"
+            ]
+        ]
+    },
+    {
+        "id": "http_compat_control",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "兼容控制",
+        "url": "/api/control",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 740,
+        "wires": [
+            [
+                "json_control"
+            ]
+        ]
+    },
+    {
+        "id": "http_compat_devices",
+        "type": "http in",
+        "z": "tab_api",
+        "name": "兼容设备",
+        "url": "/api/devices",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 800,
+        "wires": [
+            [
+                "fn_devices_query"
+            ]
+        ]
+    },
+    {
+        "id": "ui_tpl_status",
+        "type": "ui_template",
+        "z": "tab_dash",
+        "group": "ui_group_metrics",
+        "name": "状态摘要",
+        "order": 7,
+        "width": 12,
+        "height": 4,
+        "format": "<div style=\"white-space:pre-wrap;font-family:monospace;line-height:1.6\">{{msg.payload}}</div>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "x": 580,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_button_dash_open_front",
+        "type": "ui_button",
+        "z": "tab_dash",
+        "name": "前门开",
+        "group": "ui_group_control",
+        "order": 10,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "打开前门",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#2196f3",
+        "icon": "unlock",
+        "payload": "OPEN_FRONT",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 270,
+        "y": 540,
+        "wires": [
+            [
+                "fn_dash_control"
+            ]
+        ]
+    },
+    {
+        "id": "ui_button_dash_close_front",
+        "type": "ui_button",
+        "z": "tab_dash",
+        "name": "前门关",
+        "group": "ui_group_control",
+        "order": 11,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "关闭前门",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#f44336",
+        "icon": "lock",
+        "payload": "CLOSE_FRONT",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 90,
+        "y": 300,
+        "wires": [
+            [
+                "fn_dash_control"
+            ]
+        ]
+    },
+    {
+        "id": "ui_button_dash_open_back",
+        "type": "ui_button",
+        "z": "tab_dash",
+        "name": "后门开",
+        "group": "ui_group_control",
+        "order": 12,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "打开后门",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#4caf50",
+        "icon": "unlock",
+        "payload": "OPEN_BACK",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 230,
+        "y": 460,
+        "wires": [
+            [
+                "fn_dash_control"
+            ]
+        ]
+    },
+    {
+        "id": "ui_button_dash_close_back",
+        "type": "ui_button",
+        "z": "tab_dash",
+        "name": "后门关",
+        "group": "ui_group_control",
+        "order": 13,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "关闭后门",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#ff9800",
+        "icon": "lock",
+        "payload": "CLOSE_BACK",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 210,
+        "y": 60,
+        "wires": [
+            [
+                "fn_dash_control"
+            ]
+        ]
+    },
+    {
+        "id": "ui_button_dash_fan_on",
+        "type": "ui_button",
+        "z": "tab_dash",
+        "name": "风扇开",
+        "group": "ui_group_control",
+        "order": 14,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "风扇开启",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#009688",
+        "icon": "power",
+        "payload": "FAN_ON",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 110,
+        "y": 140,
+        "wires": [
+            [
+                "fn_dash_control"
+            ]
+        ]
+    },
+    {
+        "id": "ui_button_dash_fan_off",
+        "type": "ui_button",
+        "z": "tab_dash",
+        "name": "风扇关",
+        "group": "ui_group_control",
+        "order": 15,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "风扇关闭",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#607d8b",
+        "icon": "power-off",
+        "payload": "FAN_OFF",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 110,
+        "y": 220,
+        "wires": [
+            [
+                "fn_dash_control"
+            ]
+        ]
+    },
+    {
+        "id": "ui_button_dash_alarm_stop",
+        "type": "ui_button",
+        "z": "tab_dash",
+        "name": "取消告警",
+        "group": "ui_group_control",
+        "order": 16,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "取消告警",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "#795548",
+        "icon": "bell-slash",
+        "payload": "ALARM_STOP",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 180,
+        "y": 340,
+        "wires": [
+            [
+                "fn_dash_control"
+            ]
+        ]
+    },
+    {
+        "id": "fn_dash_control",
+        "type": "function",
+        "z": "tab_dash",
+        "name": "面板控制",
+        "func": "const action = msg.payload;\nconst latest = global.get('latestTelemetry') || {};\nconst age = latest.lastSeen ? Date.now() - latest.lastSeen : 1e12;\nconst deviceId = latest.deviceId || 'ESP32_BOX_001';\n\nif (age > 15000) {\n  return [\n    { payload: null },\n    { payload: null },\n    { payload: '设备离线，禁止控制' }\n  ];\n}\n\nif (action === 'ALARM_STOP') {\n  global.set('alarmSuppressUntil', Date.now() + 300000);\n}\n\nconst cmd = { deviceId: deviceId, cmd: action, action: action, ts: Date.now() };\n\nreturn [\n  { topic: 'device/clothes_box/control', payload: JSON.stringify(cmd) },\n  { topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [deviceId, Date.now(), action, 'sent', 'dashboard', JSON.stringify({ action: action })] },\n  { payload: '动作: ' + action + '\\n设备: ' + deviceId + '\\n时间: ' + new Date().toLocaleString('zh-CN', { hour12: false }) }\n];",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 200,
+        "wires": [
+            [],
+            [
+                "db_dash"
+            ],
+            [
+                "ui_tpl_status"
+            ]
+        ]
+    },
+    {
+        "id": "db_dash",
+        "type": "sqlite",
+        "z": "tab_dash",
+        "mydb": "sqlitedb_local",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "SQLite执行",
+        "x": 580,
+        "y": 200,
+        "wires": [
+            [
+                "debug_db_dash"
+            ]
+        ]
+    },
+    {
+        "id": "debug_db_dash",
+        "type": "debug",
+        "z": "tab_dash",
+        "name": "仪表盘数据库调试",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 200,
+        "wires": []
+    }
+]
