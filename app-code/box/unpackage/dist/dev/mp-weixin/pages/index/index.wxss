@@ -1,0 +1,247 @@
+@import "../../uvue.wxss";
+:host{display:flex;flex-direction:column}
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色 */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */
+.container {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding: 20rpx;
+  padding-bottom: 120rpx;
+}
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.status-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #999;
+}
+.status-dot.online {
+  background: #52c41a;
+  animation: pulse 2s infinite;
+}
+.status-dot.offline {
+  background: #ff4d4f;
+}
+@keyframes pulse {
+0%, 100% {
+    opacity: 1;
+}
+50% {
+    opacity: 0.5;
+}
+}
+.status-text {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+}
+.update-time {
+  font-size: 24rpx;
+  color: #999;
+}
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+  margin-bottom: 30rpx;
+}
+.sensor-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+.sensor-icon {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+.sensor-icon.temp-icon {
+  background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+}
+.sensor-icon.humidity-icon {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+.sensor-icon.capacity-icon {
+  background: linear-gradient(135deg, #43e97b, #38f9d7);
+}
+.sensor-icon.air-icon {
+  background: linear-gradient(135deg, #a8edea, #fed6e3);
+}
+.icon-text {
+  font-size: 32rpx;
+}
+.sensor-info {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+}
+.sensor-value {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+.sensor-unit {
+  font-size: 24rpx;
+  color: #999;
+}
+.sensor-label {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+.capacity-bar {
+  width: 100%;
+  height: 8rpx;
+  background: #f0f0f0;
+  border-radius: 4rpx;
+  margin-top: 16rpx;
+  overflow: hidden;
+}
+.capacity-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #43e97b, #38f9d7);
+  border-radius: 4rpx;
+  transition: width 0.3s ease;
+}
+.capacity-fill.full {
+  background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+}
+.device-section, .alert-section, .system-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 20rpx;
+  padding-left: 8rpx;
+  border-left: 6rpx solid #1a73e8;
+}
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16rpx;
+}
+.device-item {
+  text-align: center;
+  padding: 20rpx 10rpx;
+  background: #f8f9fa;
+  border-radius: 12rpx;
+  transition: all 0.3s ease;
+}
+.device-item.active {
+  background: #e8f0fe;
+}
+.device-icon {
+  font-size: 40rpx;
+  margin-bottom: 8rpx;
+}
+.device-name {
+  display: block;
+  font-size: 22rpx;
+  color: #666;
+  margin-bottom: 4rpx;
+}
+.device-status {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #999;
+}
+.active .device-status {
+  color: #1a73e8;
+}
+.alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.alert-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+}
+.alert-item.tilt {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+.alert-item.fault {
+  background: #fff1f0;
+  color: #ff4d4f;
+}
+.alert-icon {
+  font-size: 28rpx;
+}
+.system-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+.system-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 20rpx;
+  background: #f8f9fa;
+  border-radius: 12rpx;
+}
+.system-label {
+  font-size: 26rpx;
+  color: #666;
+}
+.system-value {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #333;
+}

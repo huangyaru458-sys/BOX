@@ -174,13 +174,11 @@ onUnmounted(() => {
 	}
 });
 
-defineOptions({
-	onPullDownRefresh: () => {
-		fetchData();
-		setTimeout(() => {
-			uni.stopPullDownRefresh();
-		}, 1000);
-	}
+onPullDownRefresh(() => {
+	fetchData();
+	setTimeout(() => {
+		uni.stopPullDownRefresh();
+	}, 1000);
 });
 </script>
 

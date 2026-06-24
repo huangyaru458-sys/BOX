@@ -169,13 +169,11 @@ onMounted(() => {
 	fetchTelemetry();
 });
 
-defineOptions({
-	onPullDownRefresh: () => {
-		switchTab(activeTab.value);
-		setTimeout(() => {
-			uni.stopPullDownRefresh();
-		}, 1000);
-	}
+onPullDownRefresh(() => {
+	switchTab(activeTab.value);
+	setTimeout(() => {
+		uni.stopPullDownRefresh();
+	}, 1000);
 });
 </script>
 
