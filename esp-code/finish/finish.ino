@@ -5,10 +5,11 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <Keypad.h>
+#include <WebServer.h>
 #include <U8g2lib.h> 
-#define WIFI_SSID "hhhhhh"
-#define WIFI_PASS "huangyaru"
-#define MQTT_SERVER "192.168.34.228"
+#define WIFI_SSID "hhhh"
+#define WIFI_PASS "huangyongmei66"
+#define MQTT_SERVER "10.94.163.228"
 #define MQTT_PORT 1883
 #define MQTT_USER ""
 #define MQTT_PASS "" 
@@ -55,8 +56,23 @@
 #define MQTT_RECONNECT_INTERVAL 5000
 #define ONLINE_CHECK_INTERVAL 30000 
 #define FULL_THRESHOLD 90.0f
-#define AIR_QUALITY_THRESHOLD 300
-#define TILT_THRESHOLD 30.0f
+#define AIR_QUALITY_THRESHOLD 70
+#define AIR_QUALITY_RAW_MIN 0
+#define AIR_QUALITY_RAW_MAX 4095
+#define TILT_THRESHOLD 25.0f
+#define HUMAN_LEAVE_CLOSE_DELAY_MS 5000UL
+#define TILT_CONFIRM_DELAY_MS 2000UL
+#define CONFIG_MAGIC 0x43424647UL
+#define CONFIG_VERSION 1
+
+typedef struct {
+    uint32_t magic;
+    uint8_t version;
+    char wifiSsid[33];
+    char wifiPass[65];
+    char mqttServer[65];
+    uint16_t mqttPort;
+} DeviceConfig;
 
 typedef enum {
     STATE_INIT,
@@ -100,9 +116,11 @@ typedef struct {
 
 SensorData g_sensorData;
 SystemStatus g_systemStatus;
+DeviceConfig g_config;
 WiFiClient g_wifiClient;
 PubSubClient g_mqttClient(g_wifiClient);
 U8G2_SH1106_128X64_NONAME_F_HW_I2C g_u8g2(U8G2_R0, U8X8_PIN_NONE);
+WebServer g_configServer(80);
 
 const byte ROWS = 4;
 const byte COLS = 4;
@@ -127,6 +145,11 @@ unsigned long g_lastOledUpdate = 0;
 unsigned long g_lastWifiCheck = 0;
 unsigned long g_lastMqttCheck = 0;
 unsigned long g_buzzUntilMs = 0;
+unsigned long g_lastHumanSeenMs = 0;
+unsigned long g_frontDoorAutoCloseAtMs = 0;
+unsigned long g_tiltConfirmSinceMs = 0;
+float g_lastTiltAngle = 0.0f;
+bool g_prevHumanDetect = false;
 
 bool readDht11(float &temp, float &hum);
 float readDistanceCm();
@@ -147,6 +170,11 @@ void openBackDoor();
 void closeBackDoor();
 void updateSensorData();
 void updateSystemState();
+void updateAutoFrontDoor();
+void loadDeviceConfig();
+void saveDeviceConfig();
+void resetDeviceConfig();
+void applyDeviceConfig(JsonDocument &doc, const char *source);
 void publishTelemetry();
 void publishAlert(AlertType type, const char *msg);
 void executeCommand(const char *cmd, const char *source);
@@ -154,6 +182,8 @@ void handleMqttMessage(char *topic, byte *payload, unsigned int length);
 void connectWifi();
 void connectMqtt();
 void setupApMode();
+void setupConfigPortal();
+void handleConfigPortal();
 void handleLocalRequest(String path, String body);
 void drawOled();
 void handleSerialCommand();
@@ -248,7 +278,12 @@ void httpServerLoop();
 }
   int readMq135()  
 {
-         return analogRead(PIN_MQ135);
+         int raw = analogRead(PIN_MQ135);
+         int percent = map(raw, AIR_QUALITY_RAW_MIN, AIR_QUALITY_RAW_MAX, 0, 100);
+         if (percent < 0) percent = 0;
+         if (percent > 100) percent = 100;
+         Serial.printf("[SENSOR] air raw=%d percent=%d threshold=%d\n", raw, percent, AIR_QUALITY_THRESHOLD);
+         return percent;
 
 }
   bool readMpu6050(float &angle)  
@@ -347,6 +382,98 @@ void closeBackDoor()
     g_sensorData.backDoor = false;
     Serial.println("[ACT] back door light off");
 }
+
+void loadDeviceConfig()
+{
+    EEPROM.get(0, g_config);
+    if (g_config.magic != CONFIG_MAGIC || g_config.version != CONFIG_VERSION) {
+        memset(&g_config, 0, sizeof(g_config));
+        g_config.magic = CONFIG_MAGIC;
+        g_config.version = CONFIG_VERSION;
+        strncpy(g_config.wifiSsid, WIFI_SSID, sizeof(g_config.wifiSsid) - 1);
+        strncpy(g_config.wifiPass, WIFI_PASS, sizeof(g_config.wifiPass) - 1);
+        strncpy(g_config.mqttServer, MQTT_SERVER, sizeof(g_config.mqttServer) - 1);
+        g_config.mqttPort = MQTT_PORT;
+        saveDeviceConfig();
+        Serial.println("[CFG] default config saved");
+    }
+
+    g_config.wifiSsid[sizeof(g_config.wifiSsid) - 1] = '\0';
+    g_config.wifiPass[sizeof(g_config.wifiPass) - 1] = '\0';
+    g_config.mqttServer[sizeof(g_config.mqttServer) - 1] = '\0';
+    if (g_config.mqttPort == 0) g_config.mqttPort = MQTT_PORT;
+
+    Serial.printf("[CFG] wifi ssid=%s mqtt=%s:%u\n", g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort);
+}
+
+void saveDeviceConfig()
+{
+    g_config.magic = CONFIG_MAGIC;
+    g_config.version = CONFIG_VERSION;
+    EEPROM.put(0, g_config);
+    EEPROM.commit();
+}
+
+void resetDeviceConfig()
+{
+    memset(&g_config, 0, sizeof(g_config));
+    g_config.magic = CONFIG_MAGIC;
+    g_config.version = CONFIG_VERSION;
+    strncpy(g_config.wifiSsid, WIFI_SSID, sizeof(g_config.wifiSsid) - 1);
+    strncpy(g_config.wifiPass, WIFI_PASS, sizeof(g_config.wifiPass) - 1);
+    strncpy(g_config.mqttServer, MQTT_SERVER, sizeof(g_config.mqttServer) - 1);
+    g_config.mqttPort = MQTT_PORT;
+    saveDeviceConfig();
+    Serial.printf("[CFG] reset to default wifi=%s mqtt=%s:%u\n", g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort);
+}
+
+void applyDeviceConfig(JsonDocument &doc, const char *source)
+{
+    const char *ssid = doc["wifiSsid"] | doc["ssid"] | doc["wifi_ssid"];
+    const char *pass = doc["wifiPass"] | doc["password"] | doc["wifi_password"];
+    const char *mqttServer = doc["mqttServer"] | doc["mqtt_server"];
+    uint16_t mqttPort = doc["mqttPort"] | doc["mqtt_port"] | g_config.mqttPort;
+
+    bool changed = false;
+    if (ssid && strlen(ssid) > 0) {
+        memset(g_config.wifiSsid, 0, sizeof(g_config.wifiSsid));
+        strncpy(g_config.wifiSsid, ssid, sizeof(g_config.wifiSsid) - 1);
+        changed = true;
+    }
+    if (pass) {
+        memset(g_config.wifiPass, 0, sizeof(g_config.wifiPass));
+        strncpy(g_config.wifiPass, pass, sizeof(g_config.wifiPass) - 1);
+        changed = true;
+    }
+    if (mqttServer && strlen(mqttServer) > 0) {
+        memset(g_config.mqttServer, 0, sizeof(g_config.mqttServer));
+        strncpy(g_config.mqttServer, mqttServer, sizeof(g_config.mqttServer) - 1);
+        changed = true;
+    }
+    if (mqttPort > 0 && mqttPort != g_config.mqttPort) {
+        g_config.mqttPort = mqttPort;
+        changed = true;
+    }
+
+    if (!changed) {
+        Serial.printf("[%s] config unchanged\n", source);
+        return;
+    }
+
+    saveDeviceConfig();
+    Serial.printf("[%s] config saved wifi=%s mqtt=%s:%u\n", source, g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort);
+
+    if (g_mqttClient.connected()) {
+        g_mqttClient.disconnect();
+    }
+    WiFi.disconnect();
+    g_systemStatus.wifiConnected = false;
+    g_systemStatus.mqttConnected = false;
+    connectWifi();
+    if (g_systemStatus.wifiConnected) {
+        connectMqtt();
+    }
+}
   void updateSensorData()  
 {
          float temp, hum;
@@ -373,17 +500,75 @@ void closeBackDoor()
 
     }
           g_sensorData.airQuality = readMq135();
-         g_sensorData.humanDetect = (digitalRead(PIN_PIR) == HIGH);
+         bool humanNow = (digitalRead(PIN_PIR) == HIGH);
+         g_sensorData.humanDetect = humanNow;
+         if (humanNow) {
+                 g_lastHumanSeenMs = millis();
+                 g_frontDoorAutoCloseAtMs = 0;
+         } else if (g_prevHumanDetect && g_frontDoorAutoCloseAtMs == 0) {
+                 g_frontDoorAutoCloseAtMs = millis() + HUMAN_LEAVE_CLOSE_DELAY_MS;
+                 Serial.printf("[PIR] human left, front door closes in %lu ms\n", HUMAN_LEAVE_CLOSE_DELAY_MS);
+         }
+         g_prevHumanDetect = humanNow;
           float tiltAngle;
          if (readMpu6050(tiltAngle))  
     {
-                 g_sensorData.boxTiltAlert = (tiltAngle > TILT_THRESHOLD);
+                 g_lastTiltAngle = tiltAngle;
+                 Serial.printf("[SENSOR] tilt=%.2f threshold=%.2f\n", tiltAngle, TILT_THRESHOLD);
+                 if (tiltAngle > TILT_THRESHOLD) {
+                         if (g_tiltConfirmSinceMs == 0) g_tiltConfirmSinceMs = millis();
+                         g_sensorData.boxTiltAlert = (millis() - g_tiltConfirmSinceMs) >= TILT_CONFIRM_DELAY_MS;
+                 } else {
+                         g_tiltConfirmSinceMs = 0;
+                         g_sensorData.boxTiltAlert = false;
+                 }
 
     }
+         else {
+                 g_sensorData.boxTiltAlert = false;
+                 g_tiltConfirmSinceMs = 0;
+         }
 
+}
+
+void updateAutoFrontDoor()
+{
+    if (g_sensorData.humanDetect) {
+        g_frontDoorAutoCloseAtMs = 0;
+        if (!g_sensorData.frontDoor && g_systemStatus.state != STATE_FULL_LOCK) {
+            openFrontDoor();
+            g_systemStatus.state = STATE_PUT_IN;
+            buzzerBeep(300);
+            publishTelemetry();
+            Serial.println("[PIR] human detected, front door light opened");
+        }
+        return;
+    }
+
+    if (g_sensorData.frontDoor) {
+        if (g_frontDoorAutoCloseAtMs == 0) {
+            g_frontDoorAutoCloseAtMs = millis() + HUMAN_LEAVE_CLOSE_DELAY_MS;
+            Serial.printf("[PIR] human false, front door closes in %lu ms\n", HUMAN_LEAVE_CLOSE_DELAY_MS);
+            return;
+        }
+
+        if (millis() >= g_frontDoorAutoCloseAtMs) {
+            closeFrontDoor();
+            g_frontDoorAutoCloseAtMs = 0;
+            if (g_systemStatus.state == STATE_PUT_IN) {
+                g_systemStatus.state = STATE_STANDBY;
+            }
+            publishTelemetry();
+            Serial.println("[PIR] front door light auto closed");
+        }
+    } else {
+        g_frontDoorAutoCloseAtMs = 0;
+    }
 }
 void updateSystemState()
 {
+    updateAutoFrontDoor();
+
     switch (g_systemStatus.state) {
         case STATE_INIT:
             g_systemStatus.state = STATE_STANDBY;
@@ -405,21 +590,15 @@ void updateSystemState()
             } else if (g_sensorData.airQuality > AIR_QUALITY_THRESHOLD) {
                 g_systemStatus.state = STATE_ALARM;
                 g_systemStatus.currentAlert = ALERT_AIR_BAD;
-                publishAlert(ALERT_AIR_BAD, "AIR_BAD: air quality over threshold");
+                publishAlert(ALERT_AIR_BAD, "AIR_BAD: air quality percent over threshold");
                 ledAlertOn();
                 fanOn();
                 buzzerBeep(500);
-            } else if (g_sensorData.humanDetect) {
-                g_systemStatus.state = STATE_PUT_IN;
-                openFrontDoor();
-                buzzerBeep(300);
             }
             break;
 
         case STATE_PUT_IN:
-            if (!g_sensorData.humanDetect) {
-                delay(3000);
-                closeFrontDoor();
+            if (!g_sensorData.frontDoor) {
                 g_systemStatus.state = STATE_STANDBY;
             }
             break;
@@ -455,7 +634,7 @@ void publishTelemetry()
         return;
     }
 
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<768> doc;
     doc["deviceId"] = DEVICE_ID;
     doc["timestamp"] = (uint32_t)(millis() / 1000);
     doc["capacity"] = g_sensorData.capacity;
@@ -468,8 +647,12 @@ void publishTelemetry()
     doc["frontDoor"] = g_sensorData.frontDoor ? 1 : 0;
     doc["backDoor"] = g_sensorData.backDoor ? 1 : 0;
     doc["netMode"] = g_systemStatus.netMode;
+    doc["wifiSsid"] = g_config.wifiSsid;
+    doc["mqttServer"] = g_config.mqttServer;
+    doc["mqttPort"] = g_config.mqttPort;
+    doc["staIp"] = WiFi.localIP().toString();
 
-    char buffer[512];
+    char buffer[768];
     size_t len = serializeJson(doc, buffer, sizeof(buffer));
     bool ok = g_mqttClient.publish("device/clothes_box/telemetry", buffer, len);
     Serial.printf("[MQTT] telemetry publish %s len=%u\n", ok ? "ok" : "fail", (unsigned)len);
@@ -505,7 +688,19 @@ void executeCommand(const char *cmd, const char *source)
 
     Serial.printf("[%s] cmd=%s\n", source, cmd);
 
-    if (strcmp(cmd, "OPEN_FRONT") == 0 || strcmp(cmd, "FRONT_ON") == 0 || strcmp(cmd, "ON_FRONT") == 0) {
+    if (strcmp(cmd, "RESET_CONFIG") == 0 || strcmp(cmd, "RESETCFG") == 0) {
+        resetDeviceConfig();
+        if (g_mqttClient.connected()) {
+            g_mqttClient.disconnect();
+        }
+        WiFi.disconnect();
+        g_systemStatus.wifiConnected = false;
+        g_systemStatus.mqttConnected = false;
+        connectWifi();
+        if (g_systemStatus.wifiConnected) {
+            connectMqtt();
+        }
+    } else if (strcmp(cmd, "OPEN_FRONT") == 0 || strcmp(cmd, "FRONT_ON") == 0 || strcmp(cmd, "ON_FRONT") == 0) {
         if (g_systemStatus.state != STATE_FULL_LOCK) {
             openFrontDoor();
             buzzerBeep(200);
@@ -579,6 +774,10 @@ void handleMqttMessage(char *topic, byte *payload, unsigned int length)
     }
 
     const char *cmd = doc["cmd"] | doc["action"] | doc["command"];
+    if (strcmp(topic, "device/clothes_box/config") == 0) {
+        applyDeviceConfig(doc, "MQTT");
+        return;
+    }
     if (!cmd) {
         Serial.println("[MQTT] missing cmd/action/command");
         return;
@@ -603,7 +802,7 @@ void connectWifi()
 
     Serial.println("[WiFi] connecting...");
     WiFi.mode(WIFI_AP_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    WiFi.begin(g_config.wifiSsid, g_config.wifiPass);
 
     unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < 8000) {
@@ -642,18 +841,21 @@ void connectMqtt()
         return;
     }
 
-    g_mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+    g_mqttClient.setServer(g_config.mqttServer, g_config.mqttPort);
     g_mqttClient.setCallback(handleMqttMessage);
     g_mqttClient.setKeepAlive(60);
     g_mqttClient.setSocketTimeout(10);
+    g_mqttClient.setBufferSize(1024);
     g_systemStatus.mqttConnected = false;
 
-    Serial.printf("[MQTT] connecting %s:%d ...\n", MQTT_SERVER, MQTT_PORT);
+    Serial.printf("[MQTT] connecting %s:%u ...\n", g_config.mqttServer, g_config.mqttPort);
     if (g_mqttClient.connect(DEVICE_ID, MQTT_USER, MQTT_PASS)) {
         Serial.println("[MQTT] connected");
         g_mqttClient.subscribe("device/clothes_box/control");
+        g_mqttClient.subscribe("device/clothes_box/config");
         g_systemStatus.mqttConnected = true;
         Serial.println("[MQTT] subscribed device/clothes_box/control");
+        Serial.println("[MQTT] subscribed device/clothes_box/config");
     } else {
         Serial.print("[MQTT] failed rc=");
         Serial.println(g_mqttClient.state());
@@ -667,6 +869,7 @@ void setupApMode()
     IPAddress apIP(192, 168, 4, 1);
     WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
     WiFi.softAP(AP_SSID, AP_PASS);
+    setupConfigPortal();
 
     Serial.println("[WiFi] AP offline mode started");
     Serial.print("[WiFi] AP ip=");
@@ -676,6 +879,89 @@ void setupApMode()
     g_systemStatus.state = STATE_AP_MODE;
     g_systemStatus.wifiConnected = false;
     g_systemStatus.mqttConnected = false;
+}
+
+void sendCors()
+{
+    g_configServer.sendHeader("Access-Control-Allow-Origin", "*");
+    g_configServer.sendHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    g_configServer.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+void setupConfigPortal()
+{
+    static bool started = false;
+    if (started) return;
+    started = true;
+
+    g_configServer.on("/", HTTP_GET, []() {
+        sendCors();
+        g_configServer.send(200, "text/html",
+            "<!doctype html><meta charset='utf-8'><title>CLOTHES_BOX_AP</title>"
+            "<h2>CLOTHES_BOX_AP Config</h2>"
+            "<p>Use /api/local/status, /api/local/networks, /api/local/config</p>");
+    });
+
+    g_configServer.on("/api/local/status", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
+    g_configServer.on("/api/local/config", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
+    g_configServer.on("/api/local/networks", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
+
+    g_configServer.on("/api/local/status", HTTP_GET, []() {
+        StaticJsonDocument<512> doc;
+        doc["deviceId"] = DEVICE_ID;
+        doc["wifiSsid"] = g_config.wifiSsid;
+        doc["mqttServer"] = g_config.mqttServer;
+        doc["mqttPort"] = g_config.mqttPort;
+        doc["wifiConnected"] = g_systemStatus.wifiConnected;
+        doc["mqttConnected"] = g_systemStatus.mqttConnected;
+        doc["netMode"] = g_systemStatus.netMode;
+        doc["staIp"] = WiFi.localIP().toString();
+        doc["apIp"] = WiFi.softAPIP().toString();
+        doc["capacity"] = g_sensorData.capacity;
+        doc["temperature"] = g_sensorData.temperature;
+        doc["humidity"] = g_sensorData.humidity;
+        doc["airQuality"] = g_sensorData.airQuality;
+        String out;
+        serializeJson(doc, out);
+        sendCors();
+        g_configServer.send(200, "application/json", out);
+    });
+
+    g_configServer.on("/api/local/networks", HTTP_GET, []() {
+        int count = WiFi.scanNetworks();
+        StaticJsonDocument<1024> doc;
+        JsonArray arr = doc.createNestedArray("networks");
+        for (int i = 0; i < count && i < 20; i++) {
+            JsonObject item = arr.createNestedObject();
+            item["ssid"] = WiFi.SSID(i);
+            item["rssi"] = WiFi.RSSI(i);
+            item["secure"] = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+        }
+        String out;
+        serializeJson(doc, out);
+        sendCors();
+        g_configServer.send(200, "application/json", out);
+    });
+
+    g_configServer.on("/api/local/config", HTTP_POST, []() {
+        StaticJsonDocument<512> doc;
+        DeserializationError err = deserializeJson(doc, g_configServer.arg("plain"));
+        sendCors();
+        if (err) {
+            g_configServer.send(400, "application/json", "{\"success\":false,\"msg\":\"bad json\"}");
+            return;
+        }
+        applyDeviceConfig(doc, "AP");
+        g_configServer.send(200, "application/json", "{\"success\":true,\"msg\":\"config saved, reconnecting\"}");
+    });
+
+    g_configServer.begin();
+    Serial.println("[AP] config portal ready http://192.168.4.1");
+}
+
+void handleConfigPortal()
+{
+    g_configServer.handleClient();
 }
   void handleLocalRequest(String path, String body)  
 {
@@ -788,7 +1074,7 @@ void drawOled()
          char line4[24];
           snprintf(line1, sizeof(line1), "ID:%s", DEVICE_ID);
          snprintf(line2, sizeof(line2), "T:%.1fC H:%.1f%%", g_sensorData.temperature, g_sensorData.humidity);
-         snprintf(line3, sizeof(line3), "CAP:%.0f%% AIR:%d", g_sensorData.capacity, g_sensorData.airQuality);
+         snprintf(line3, sizeof(line3), "CAP:%.0f%% AIR:%d%%", g_sensorData.capacity, g_sensorData.airQuality);
               const char *stateStr = "INIT";
          switch (g_systemStatus.state)  
     {
@@ -920,6 +1206,7 @@ void setup()
     Serial.println("System starting...");
 
     EEPROM.begin(512);
+    loadDeviceConfig();
 
     pinMode(PIN_DHT11, INPUT_PULLUP);
     pinMode(PIN_MQ135, INPUT);
@@ -988,6 +1275,8 @@ void setup()
 
 void loop()
 {
+    handleConfigPortal();
+
     if (g_buzzUntilMs != 0 && millis() >= g_buzzUntilMs) {
         digitalWrite(PIN_BUZZER, HIGH);
         g_buzzUntilMs = 0;

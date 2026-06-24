@@ -32,18 +32,24 @@
         "protocolVersion": "4",
         "keepalive": "60",
         "cleansession": true,
+        "autoUnsubscribe": true,
         "birthTopic": "",
         "birthQos": "0",
         "birthRetain": "false",
         "birthPayload": "",
+        "birthMsg": {},
         "closeTopic": "",
         "closeQos": "0",
         "closeRetain": "false",
         "closePayload": "",
+        "closeMsg": {},
         "willTopic": "",
         "willQos": "0",
         "willRetain": "false",
-        "willPayload": ""
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
     },
     {
         "id": "sqlitedb_local",
@@ -333,19 +339,24 @@
         "y": 220,
         "wires": [
             [
-                "eeba1c3f3794b3fa"
+                "eeba1c3f3794b3fa",
+                "375c6dd203d4e479"
             ],
             [
-                "ee9583249925f0d4"
+                "ee9583249925f0d4",
+                "375c6dd203d4e479"
             ],
             [
-                "c6fa33282357f471"
+                "c6fa33282357f471",
+                "375c6dd203d4e479"
             ],
             [
-                "fd532a8cbe18bf50"
+                "fd532a8cbe18bf50",
+                "375c6dd203d4e479"
             ],
             [
-                "49f60e2b1543a408"
+                "49f60e2b1543a408",
+                "375c6dd203d4e479"
             ],
             [
                 "debug_telemetry"
@@ -356,9 +367,7 @@
             [
                 "db_core"
             ],
-            [
-                "375c6dd203d4e479"
-            ]
+            []
         ]
     },
     {
@@ -624,8 +633,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 790,
-        "y": 260,
+        "x": 920,
+        "y": 240,
         "wires": []
     },
     {
@@ -822,8 +831,8 @@
             "#d62728"
         ],
         "outputs": 1,
-        "x": 840,
-        "y": 560,
+        "x": 1040,
+        "y": 640,
         "wires": [
             []
         ]
@@ -1264,7 +1273,7 @@
         "type": "function",
         "z": "tab_api",
         "name": "控制下发",
-        "func": "const body = msg.payload || {};\nconst latest = global.get('latestTelemetry') || {};\nconst age = latest.lastSeen ? Date.now() - latest.lastSeen : 1e12;\nconst action = body.action || body.command;\nconst deviceId = body.deviceId || latest.deviceId || 'ESP32_BOX_001';\n\nif (body.adminToken && body.adminToken !== 'admin_auth_secret01') {\n  msg.statusCode = 401;\n  msg.payload = { code: 401, msg: '管理员Token错误' };\n  return [null, null, msg];\n}\n\nif (!action) {\n  msg.statusCode = 400;\n  msg.payload = { code: 400, msg: '缺少action' };\n  return [null, null, msg];\n}\n\nif (action === 'ALARM_STOP') {\n  global.set('alarmSuppressUntil', Date.now() + 300000);\n}\n\nconst cmd = { deviceId: deviceId, cmd: action, action: action, ts: Date.now() };\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: age > 15000 ? 'ok_offline_warning' : 'ok', data: { sent: true, topic: 'device/clothes_box/control', command: cmd, offlineWarning: age > 15000 } };\n\nreturn [\n  { topic: 'device/clothes_box/control', payload: JSON.stringify(cmd) },\n  { topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [deviceId, Date.now(), action, 'sent', 'http', JSON.stringify(body)] },\n  msg\n];",
+        "func": "let body = msg.payload;\n\nif (typeof body === \"string\") {\n  try {\n    body = JSON.parse(body);\n  } catch (e) {\n    body = {};\n  }\n}\n\nif (!body || typeof body !== \"object\") {\n  body = {};\n}\n\nif (msg.req && msg.req.body && typeof msg.req.body === \"object\") {\n  body = Object.assign({}, msg.req.body, body);\n}\n\nconst latest = global.get(\"latestTelemetry\") || {};\nconst age = latest.lastSeen ? Date.now() - latest.lastSeen : 1e12;\n\nconst action = String(body.action || body.command || body.cmd || \"\")\n  .trim()\n  .toUpperCase();\n\nconst deviceId =\n  body.deviceId ||\n  body.device_id ||\n  latest.deviceId ||\n  \"ESP32_BOX_001\";\n\nif (body.adminToken && body.adminToken !== \"admin_auth_secret01\") {\n  msg.statusCode = 401;\n  msg.payload = {\n    code: 401,\n    msg: \"管理员Token错误\"\n  };\n  return [null, null, msg];\n}\n\nif (!action) {\n  msg.statusCode = 400;\n  msg.payload = {\n    code: 400,\n    msg: \"缺少action\",\n    debugPayload: body\n  };\n  return [null, null, msg];\n}\n\nif (action === \"ALARM_STOP\") {\n  global.set(\"alarmSuppressUntil\", Date.now() + 300000);\n}\n\nconst cmd = {\n  deviceId,\n  cmd: action,\n  action,\n  command: action,\n  ts: Date.now()\n};\n\nmsg.statusCode = 200;\nmsg.payload = {\n  code: 200,\n  msg: age > 15000 ? \"ok_offline_warning\" : \"ok\",\n  data: {\n    sent: true,\n    topic: \"device/clothes_box/control\",\n    command: cmd,\n    offlineWarning: age > 15000\n  }\n};\n\nreturn [\n  {\n    topic: \"device/clothes_box/control\",\n    payload: JSON.stringify(cmd)\n  },\n  {\n    topic: \"INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)\",\n    payload: [\n      deviceId,\n      Date.now(),\n      action,\n      \"sent\",\n      \"html_frontend\",\n      JSON.stringify(body)\n    ]\n  },\n  msg\n];",
         "outputs": 3,
         "timeout": "",
         "noerr": 0,
@@ -1334,7 +1343,7 @@
         "type": "function",
         "z": "tab_api",
         "name": "配置下发",
-        "func": "const body=msg.payload||{};if(body.adminToken&&body.adminToken!=='admin_auth_secret01'){msg.statusCode=401;msg.payload={code:401,msg:'管理员Token错误'};return [null,msg];}const cfg={deviceId:body.deviceId||'ESP32_BOX_001',mqttServer:body.mqttServer||'192.168.34.228',mqttPort:Number(body.mqttPort||1883),thresholds:body.thresholds||{},ts:Date.now()};msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{sent:true,topic:'device/clothes_box/config',config:cfg}};return [{topic:'device/clothes_box/config',payload:JSON.stringify(cfg)},msg];",
+        "func": "let body = msg.payload || {};\nif (typeof body === 'string') {\n  try { body = JSON.parse(body); } catch (e) { body = {}; }\n}\nif (body.adminToken && body.adminToken !== 'admin_auth_secret01') {\n  msg.statusCode = 401;\n  msg.payload = { code: 401, msg: '管理员Token错误' };\n  return [null, msg];\n}\nconst cfg = {\n  deviceId: body.deviceId || 'ESP32_BOX_001',\n  wifiSsid: body.wifiSsid || body.ssid || '',\n  wifiPass: body.wifiPass || body.password || '',\n  mqttServer: body.mqttServer || '192.168.34.228',\n  mqttPort: Number(body.mqttPort || 1883),\n  ts: Date.now()\n};\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { sent: true, topic: 'device/clothes_box/config', config: { ...cfg, wifiPass: cfg.wifiPass ? '******' : '' } } };\nreturn [\n  { topic: 'device/clothes_box/config', payload: JSON.stringify(cfg) },\n  msg\n];",
         "outputs": 2,
         "noerr": 0,
         "initialize": "",
@@ -1828,9 +1837,14 @@
         "topic": "",
         "qos": "0",
         "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
         "broker": "mqtt_broker_local",
-        "x": 620,
-        "y": 200,
+        "x": 720,
+        "y": 440,
         "wires": []
     },
     {
