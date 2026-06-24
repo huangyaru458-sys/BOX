@@ -107,10 +107,10 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C g_u8g2(U8G2_R0, U8X8_PIN_NONE);
 const byte ROWS = 4;
 const byte COLS = 4;
 char keys[ROWS][COLS] = {
-    {'1', '4', '7', '*'},
-    {'2', '5', '8', '0'},
-    {'3', '6', '9', '#'},
-    {'A', 'B', 'C', 'D'}
+    {'D', 'C', 'B', 'A'},
+    {'#', '9', '6', '3'},
+    {'0', '8', '5', '2'},
+    {'*', '7', '4', '1'}
 };
 byte rowPins[ROWS] = {PIN_KEY_R1, PIN_KEY_R2, PIN_KEY_R3, PIN_KEY_R4};
 byte colPins[COLS] = {PIN_KEY_C1, PIN_KEY_C2, PIN_KEY_C3, PIN_KEY_C4};
@@ -406,6 +406,7 @@ void updateSystemState()
                 g_systemStatus.state = STATE_ALARM;
                 g_systemStatus.currentAlert = ALERT_AIR_BAD;
                 publishAlert(ALERT_AIR_BAD, "AIR_BAD: air quality over threshold");
+                ledAlertOn();
                 fanOn();
                 buzzerBeep(500);
             } else if (g_sensorData.humanDetect) {
@@ -873,7 +874,8 @@ void handleSerialCommand()
                                  buzzerBeep(500);
                                  g_systemStatus.currentAlert = ALERT_PWD_ERROR;
                                  publishAlert(ALERT_PWD_ERROR, "Local password error");
-                                 Serial.println("Password incorrect");
+                                 ledAlertOn();
+                                                  Serial.println("Password incorrect");
 
             }
                          g_passwordIndex = 0;
