@@ -509,20 +509,26 @@ void executeCommand(const char *cmd, const char *source)
         if (g_systemStatus.state != STATE_FULL_LOCK) {
             openFrontDoor();
             buzzerBeep(200);
+            publishTelemetry();
         } else {
             Serial.printf("[%s] rejected OPEN_FRONT, box full lock\n", source);
         }
     } else if (strcmp(cmd, "CLOSE_FRONT") == 0 || strcmp(cmd, "FRONT_OFF") == 0 || strcmp(cmd, "OFF_FRONT") == 0) {
         closeFrontDoor();
+        publishTelemetry();
     } else if (strcmp(cmd, "OPEN_BACK") == 0 || strcmp(cmd, "BACK_ON") == 0 || strcmp(cmd, "ON_BACK") == 0) {
         openBackDoor();
         buzzerBeep(200);
+        publishTelemetry();
     } else if (strcmp(cmd, "CLOSE_BACK") == 0 || strcmp(cmd, "BACK_OFF") == 0 || strcmp(cmd, "OFF_BACK") == 0) {
         closeBackDoor();
+        publishTelemetry();
     } else if (strcmp(cmd, "FAN_ON") == 0) {
         fanOn();
+        publishTelemetry();
     } else if (strcmp(cmd, "FAN_OFF") == 0) {
         fanOff();
+        publishTelemetry();
     } else if (strcmp(cmd, "BUZZER_ON") == 0 || strcmp(cmd, "BEEP_ON") == 0) {
         buzzerOn();
     } else if (strcmp(cmd, "BUZZER_OFF") == 0 || strcmp(cmd, "BEEP_OFF") == 0) {
@@ -535,6 +541,7 @@ void executeCommand(const char *cmd, const char *source)
         ledAlertOff();
         fanOff();
         buzzerOff();
+        publishTelemetry();
         Serial.println("[ACT] alarm stop");
     } else if (strcmp(cmd, "STATUS") == 0) {
         Serial.printf("[STATUS] front=%d back=%d fan=%d cap=%.1f temp=%.1f hum=%.1f air=%u wifi=%d mqtt=%d\n",

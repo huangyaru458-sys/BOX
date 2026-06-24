@@ -333,19 +333,24 @@
         "y": 220,
         "wires": [
             [
-                "eeba1c3f3794b3fa"
+                "eeba1c3f3794b3fa",
+                "375c6dd203d4e479"
             ],
             [
-                "ee9583249925f0d4"
+                "ee9583249925f0d4",
+                "375c6dd203d4e479"
             ],
             [
-                "c6fa33282357f471"
+                "c6fa33282357f471",
+                "375c6dd203d4e479"
             ],
             [
-                "fd532a8cbe18bf50"
+                "fd532a8cbe18bf50",
+                "375c6dd203d4e479"
             ],
             [
-                "49f60e2b1543a408"
+                "49f60e2b1543a408",
+                "375c6dd203d4e479"
             ],
             [
                 "debug_telemetry"
@@ -356,9 +361,7 @@
             [
                 "db_core"
             ],
-            [
-                "375c6dd203d4e479"
-            ]
+            []
         ]
     },
     {
@@ -624,8 +627,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 790,
-        "y": 260,
+        "x": 920,
+        "y": 240,
         "wires": []
     },
     {
@@ -822,8 +825,8 @@
             "#d62728"
         ],
         "outputs": 1,
-        "x": 840,
-        "y": 560,
+        "x": 1040,
+        "y": 640,
         "wires": [
             []
         ]
@@ -1810,7 +1813,7 @@
         "y": 200,
         "wires": [
             [
-                "mqtt_out_control"
+                "mqtt_out_dash_control"
             ],
             [
                 "db_dash"
@@ -1819,6 +1822,19 @@
                 "ui_tpl_status"
             ]
         ]
+    },
+    {
+        "id": "mqtt_out_dash_control",
+        "type": "mqtt out",
+        "z": "tab_dash",
+        "name": "控制输出-面板",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "broker": "mqtt_broker_local",
+        "x": 620,
+        "y": 200,
+        "wires": []
     },
     {
         "id": "db_dash",
