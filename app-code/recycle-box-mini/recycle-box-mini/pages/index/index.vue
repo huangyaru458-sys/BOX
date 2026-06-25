@@ -70,6 +70,8 @@
 					frontDoor: false,
 					backDoor: false,
 					deviceId: 'ESP32_BOX_001',
+					staIp: '',
+					apIp: '',
 					netMode: '--',
 					systemState: '--',
 					updatedAt: 0
@@ -122,7 +124,7 @@
 				}, {})
 			},
 			isLocalChannelActive() {
-				return this.connectionState.activeChannel === CHANNELS.localAp || this.config.mode === MODES.localAp
+				return this.connectionState.activeChannel === CHANNELS.localAp || this.config.mode === MODES.localAp || !!this.deviceStatus.staIp
 			}
 		},
 		watch: {
@@ -180,6 +182,15 @@
 				}
 
 				this.deviceStatus = snapshot.status
+				if (snapshot.status && snapshot.status.staIp) {
+					const learnedBaseUrl = `http://${snapshot.status.staIp}`
+					if (this.config.localApBaseUrl !== learnedBaseUrl) {
+						this.config = {
+							...this.config,
+							localApBaseUrl: learnedBaseUrl
+						}
+					}
+				}
 				this.connectionState.activeChannel = snapshot.channel
 				this.connectionState.lastError = ''
 				this.historyData = snapshot.history.length ? mergeHistory(this.historyData, snapshot.history) : appendHistoryPoint(this.historyData, snapshot.status)
@@ -221,6 +232,25 @@
 					return
 				}
 
+				const fallbackLocalBaseUrl = this.deviceStatus.staIp ? `http://${this.deviceStatus.staIp}` : ''
+				if (this.config.mode === MODES.backend && fallbackLocalBaseUrl) {
+					const fallbackConfig = {
+						...this.config,
+						localApBaseUrl: fallbackLocalBaseUrl
+					}
+					const fallbackResult = await sendControl(fallbackConfig, CHANNELS.localAp, action)
+					if (fallbackResult.ok) {
+						this.config = {
+							...this.config,
+							localApBaseUrl: fallbackLocalBaseUrl
+						}
+						const payload = fallbackResult.data && fallbackResult.data.data ? fallbackResult.data.data : {}
+						this.pushLog(action, true, payload.offlineWarning ? '已回退到本地直连，但设备当前离线' : '已回退到本地直连')
+						await this.refreshSnapshot()
+						return
+					}
+				}
+
 				this.pushLog(action, false, result.errorMessage || '执行失败')
 			},
 			async handleReadAlerts() {
@@ -242,7 +272,7 @@
 			},
 			async handleLocalAction(action) {
 				if (!this.isLocalChannelActive) {
-					this.pushLog(action, false, '当前未连接本地 AP 通道')
+					this.pushLog(action, false, '当前未连接本地直连通道')
 					return
 				}
 

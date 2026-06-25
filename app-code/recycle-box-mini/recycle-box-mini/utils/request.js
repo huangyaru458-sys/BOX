@@ -16,8 +16,17 @@ export function request({
 	timeout = REQUEST_TIMEOUT,
 	validateResponse
 }) {
-	const fullUrl = `${baseUrl}${url}${method === 'GET' ? buildQuery(data) : ''}`
 	const requestMethod = String(method || 'GET').toUpperCase()
+
+	if (!baseUrl) {
+		return Promise.resolve({
+			ok: false,
+			errorType: 'config',
+			errorMessage: '后端地址未配置'
+		})
+	}
+
+	const fullUrl = `${baseUrl}${url}${requestMethod === 'GET' ? buildQuery(data) : ''}`
 
 	return new Promise((resolve) => {
 		uni.request({

@@ -57,6 +57,8 @@ function normalizeStatus(payload = {}) {
 		netMode: pickValue(status, ['netMode', 'net_mode', 'currentNetMode'], '--'),
 		systemState: pickValue(status, ['systemState', 'system_state'], '--'),
 		deviceId: status.deviceId || status.device_id || 'ESP32_BOX_001',
+		staIp: pickValue(status, ['staIp', 'sta_ip', 'ip'], ''),
+		apIp: pickValue(status, ['apIp', 'ap_ip'], ''),
 		sensorFaults: Array.isArray(status.sensorFaults) ? status.sensorFaults : (Array.isArray(status.sensor_faults) ? status.sensor_faults : []),
 		buzzerMode: status.buzzerMode || status.buzzer_mode || 'off',
 		mqttOnline: status.mqttOnline !== undefined ? normalizeBool(status.mqttOnline) : true,
@@ -319,7 +321,14 @@ function applyDemoModeSwitch(targetMode) {
 
 async function queryBackend(config) {
 	const statusResult = await fetchBackendStatus(config)
-	if (!statusResult.ok) return { ok: false, channel: CHANNELS.backend, errorKey: 'backendOffline', message: ERROR_MESSAGES.backendOffline }
+	if (!statusResult.ok) {
+		return {
+			ok: false,
+			channel: CHANNELS.backend,
+			errorKey: statusResult.errorType === 'config' ? 'backendMissing' : 'backendOffline',
+			message: statusResult.errorType === 'config' ? ERROR_MESSAGES.backendMissing : ERROR_MESSAGES.backendOffline
+		}
+	}
 	const [historyResult, alertsResult, commandsResult, healthResult] = await Promise.all([
 		fetchBackendHistory(config),
 		fetchBackendAlerts(config),
@@ -339,7 +348,9 @@ async function queryBackend(config) {
 
 async function queryLocal(config) {
 	const statusResult = await fetchLocalStatus(config)
-	if (!statusResult.ok) return { ok: false, channel: CHANNELS.localAp, errorKey: 'localApOffline', message: ERROR_MESSAGES.localApOffline }
+	if (!statusResult.ok) {
+		return { ok: false, channel: CHANNELS.localAp, errorKey: 'localApOffline', message: ERROR_MESSAGES.localApOffline }
+	}
 	return { ok: true, channel: CHANNELS.localAp, status: normalizeStatus(statusResult.data), history: [], alerts: [], commands: [], health: { ok: true, broker: '--', service: '本地直连模式', updatedAt: Date.now() } }
 }
 

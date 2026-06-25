@@ -10,12 +10,13 @@
 		<view v-if="showDemoScenePicker" class="hint">可切换正常运行、满载禁开、倾斜告警、设备离线四种答辩演示场景。</view>
 		<view class="field">
 			<text class="label">后端地址</text>
-			<input class="input" :value="config.backendBaseUrl" placeholder="http://localhost:1880" @input="emitField('backendBaseUrl', $event.detail.value)" />
+			<input class="input" :value="config.backendBaseUrl" placeholder="http://192.168.222.228:1880" @input="emitField('backendBaseUrl', $event.detail.value)" />
+			<text class="hint">手机端不能填写 localhost；请填运行 Node-RED 的电脑局域网 IP。</text>
 		</view>
 		<view class="field">
 			<text class="label">本地地址</text>
-			<input class="input" :value="config.localApBaseUrl" placeholder="http://192.168.4.1 或 STA 局域网 IP" @input="emitField('localApBaseUrl', $event.detail.value)" />
-			<text class="hint">可填写 ESP32 AP 地址 `192.168.4.1`，也可填写 STA 模式下的局域网 IP。</text>
+			<input class="input" :value="config.localApBaseUrl" placeholder="http://192.168.4.1 或 http://192.168.222.xxx" @input="emitField('localApBaseUrl', $event.detail.value)" />
+			<text class="hint">ESP32 既支持 AP 地址，也支持 STA 模式下拿到的局域网 IP。</text>
 		</view>
 		<view class="field">
 			<text class="label">设备 ID</text>

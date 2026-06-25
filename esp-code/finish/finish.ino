@@ -62,6 +62,12 @@
 #define TILT_THRESHOLD 25.0f
 #define HUMAN_LEAVE_CLOSE_DELAY_MS 5000UL
 #define TILT_CONFIRM_DELAY_MS 2000UL
+#define FULL_CONFIRM_DELAY_MS 5000UL
+#define FULL_RELEASE_DELAY_MS 5000UL
+#define FULL_RELEASE_THRESHOLD 85.0f
+#define FRONT_MANUAL_HOLD_MS 10000UL
+#define FAN_MANUAL_OVERRIDE_MS 120000UL
+#define MPU_CALIBRATION_SAMPLES 30
 #define CONFIG_MAGIC 0x43424647UL
 #define CONFIG_VERSION 1
 
@@ -148,13 +154,25 @@ unsigned long g_buzzUntilMs = 0;
 unsigned long g_lastHumanSeenMs = 0;
 unsigned long g_frontDoorAutoCloseAtMs = 0;
 unsigned long g_tiltConfirmSinceMs = 0;
+unsigned long g_fullConfirmSinceMs = 0;
+unsigned long g_fullReleaseSinceMs = 0;
+unsigned long g_frontManualUntilMs = 0;
+unsigned long g_fanManualOverrideUntilMs = 0;
 float g_lastTiltAngle = 0.0f;
+float g_mpuPitchOffset = 0.0f;
+float g_mpuRollOffset = 0.0f;
+bool g_mpuCalibrated = false;
+bool g_fullConfirmed = false;
 bool g_prevHumanDetect = false;
 
 bool readDht11(float &temp, float &hum);
 float readDistanceCm();
 int readMq135();
+bool readMpu6050Raw(float &pitch, float &roll);
 bool readMpu6050(float &angle);
+void calibrateMpu6050();
+bool isTimerActive(unsigned long untilMs);
+uint32_t remainingMs(unsigned long untilMs);
 void fanOn();
 void fanOff();
 void buzzerOn();
@@ -190,6 +208,53 @@ void handleSerialCommand();
 void handleKeypad();
 void httpServerLoop();
 void printSnapshot(const char *source);
+void sendCors();
+
+void sendJsonWithCors(int code, const String &payload)
+{
+    sendCors();
+    g_configServer.send(code, "application/json", payload);
+}
+
+String buildStatusJson()
+{
+    StaticJsonDocument<1536> doc;
+    doc["deviceId"] = DEVICE_ID;
+    doc["wifiSsid"] = g_config.wifiSsid;
+    doc["mqttServer"] = g_config.mqttServer;
+    doc["mqttPort"] = g_config.mqttPort;
+    doc["wifiConnected"] = g_systemStatus.wifiConnected;
+    doc["mqttConnected"] = g_systemStatus.mqttConnected;
+    doc["netMode"] = g_systemStatus.netMode;
+    doc["systemState"] = g_systemStatus.state == STATE_STANDBY ? "STANDBY" :
+                          g_systemStatus.state == STATE_PUT_IN ? "PUT_IN" :
+                          g_systemStatus.state == STATE_FULL_LOCK ? "FULL_LOCK" :
+                          g_systemStatus.state == STATE_ALARM ? "ALARM" :
+                          g_systemStatus.state == STATE_MAINTENANCE ? "MAINTENANCE" :
+                          g_systemStatus.state == STATE_AP_MODE ? "AP_MODE" : "INIT";
+    doc["staIp"] = WiFi.localIP().toString();
+    doc["apIp"] = WiFi.softAPIP().toString();
+    doc["capacity"] = g_sensorData.capacity;
+    doc["temperature"] = g_sensorData.temperature;
+    doc["humidity"] = g_sensorData.humidity;
+    doc["airQuality"] = g_sensorData.airQuality;
+    doc["humanDetect"] = g_sensorData.humanDetect;
+    doc["boxTiltAlert"] = g_sensorData.boxTiltAlert;
+    doc["tiltAngle"] = g_lastTiltAngle;
+    doc["fanStatus"] = g_sensorData.fanStatus ? 1 : 0;
+    doc["frontDoor"] = g_sensorData.frontDoor ? 1 : 0;
+    doc["backDoor"] = g_sensorData.backDoor ? 1 : 0;
+    doc["fullConfirmed"] = g_fullConfirmed ? 1 : 0;
+    doc["fullConfirming"] = g_fullConfirmSinceMs != 0 && !g_fullConfirmed ? 1 : 0;
+    doc["fullConfirmMs"] = g_fullConfirmSinceMs != 0 && !g_fullConfirmed ? (uint32_t)(millis() - g_fullConfirmSinceMs) : 0;
+    doc["fullReleaseMs"] = g_fullReleaseSinceMs != 0 && g_fullConfirmed ? (uint32_t)(millis() - g_fullReleaseSinceMs) : 0;
+    doc["frontManualHoldMs"] = remainingMs(g_frontManualUntilMs);
+    doc["fanManualOverrideMs"] = remainingMs(g_fanManualOverrideUntilMs);
+    doc["mpuCalibrated"] = g_mpuCalibrated ? 1 : 0;
+    String out;
+    serializeJson(doc, out);
+    return out;
+}
   bool readDht11(float &temp, float &hum)  
 {
          uint8_t bits[5] =  
@@ -287,7 +352,7 @@ void printSnapshot(const char *source);
          return percent;
 
 }
-  bool readMpu6050(float &angle)  
+  bool readMpu6050Raw(float &pitch, float &roll)
 {
          Wire.beginTransmission(MPU_ADDR);
          Wire.write(0x3B);
@@ -296,12 +361,68 @@ void printSnapshot(const char *source);
           int16_t ax = (Wire.read() << 8) | Wire.read();
          int16_t ay = (Wire.read() << 8) | Wire.read();
          int16_t az = (Wire.read() << 8) | Wire.read();
-          float pitch = atan2(ay, sqrt(ax * ax + az * az)) * 180.0f / PI;
-         float roll = atan2(-ax, az) * 180.0f / PI;
+          pitch = atan2((float)ay, sqrt((float)ax * (float)ax + (float)az * (float)az)) * 180.0f / PI;
+          roll = atan2(-(float)ax, (float)az) * 180.0f / PI;
+          return true;
+
+}
+
+  bool readMpu6050(float &angle)
+{
+         float pitch = 0.0f;
+         float roll = 0.0f;
+         if (!readMpu6050Raw(pitch, roll)) return false;
+         if (g_mpuCalibrated) {
+                 pitch -= g_mpuPitchOffset;
+                 roll -= g_mpuRollOffset;
+         }
          angle = max(abs(pitch), abs(roll));
          return true;
 
 }
+
+void calibrateMpu6050()
+{
+    float pitchSum = 0.0f;
+    float rollSum = 0.0f;
+    int okCount = 0;
+
+    Serial.println("[MPU] calibrating baseline, keep box still");
+    for (int i = 0; i < MPU_CALIBRATION_SAMPLES; i++) {
+        float pitch = 0.0f;
+        float roll = 0.0f;
+        if (readMpu6050Raw(pitch, roll)) {
+            pitchSum += pitch;
+            rollSum += roll;
+            okCount++;
+        }
+        delay(30);
+    }
+
+    if (okCount > 0) {
+        g_mpuPitchOffset = pitchSum / okCount;
+        g_mpuRollOffset = rollSum / okCount;
+        g_mpuCalibrated = true;
+        Serial.printf("[MPU] baseline pitch=%.2f roll=%.2f samples=%d\n", g_mpuPitchOffset, g_mpuRollOffset, okCount);
+    } else {
+        g_mpuCalibrated = false;
+        g_mpuPitchOffset = 0.0f;
+        g_mpuRollOffset = 0.0f;
+        Serial.println("[MPU] calibration failed, using absolute angle");
+    }
+}
+
+bool isTimerActive(unsigned long untilMs)
+{
+    return untilMs != 0 && (long)(untilMs - millis()) > 0;
+}
+
+uint32_t remainingMs(unsigned long untilMs)
+{
+    if (!isTimerActive(untilMs)) return 0;
+    return (uint32_t)(untilMs - millis());
+}
+
 void fanOn()
 {
     digitalWrite(PIN_FAN_IN1, HIGH);
@@ -462,6 +583,7 @@ void applyDeviceConfig(JsonDocument &doc, const char *source)
     g_systemStatus.wifiConnected = false;
     g_systemStatus.mqttConnected = false;
     connectWifi();
+    setupConfigPortal();
     if (g_systemStatus.wifiConnected) {
         connectMqtt();
     }
@@ -526,9 +648,14 @@ void applyDeviceConfig(JsonDocument &doc, const char *source)
 
 void updateAutoFrontDoor()
 {
+    if (isTimerActive(g_frontManualUntilMs)) {
+        g_frontDoorAutoCloseAtMs = 0;
+        return;
+    }
+
     if (g_sensorData.humanDetect) {
         g_frontDoorAutoCloseAtMs = 0;
-        if (!g_sensorData.frontDoor && g_systemStatus.state != STATE_FULL_LOCK) {
+        if (!g_sensorData.frontDoor && !g_fullConfirmed && g_systemStatus.state != STATE_FULL_LOCK) {
             openFrontDoor();
             g_systemStatus.state = STATE_PUT_IN;
             buzzerBeep(300);
@@ -562,15 +689,49 @@ void updateSystemState()
 {
     updateAutoFrontDoor();
 
+    if (g_sensorData.capacity >= FULL_THRESHOLD) {
+        g_fullReleaseSinceMs = 0;
+        if (g_fullConfirmSinceMs == 0) {
+            g_fullConfirmSinceMs = millis();
+            Serial.printf("[FULL] capacity %.1f >= %.1f, confirming\n", g_sensorData.capacity, FULL_THRESHOLD);
+        }
+        if (!g_fullConfirmed && millis() - g_fullConfirmSinceMs >= FULL_CONFIRM_DELAY_MS) {
+            g_fullConfirmed = true;
+            Serial.println("[FULL] confirmed full lock");
+            publishTelemetry();
+        }
+    } else {
+        g_fullConfirmSinceMs = 0;
+    }
+
+    if (g_fullConfirmed && g_sensorData.capacity <= FULL_RELEASE_THRESHOLD) {
+        if (g_fullReleaseSinceMs == 0) {
+            g_fullReleaseSinceMs = millis();
+            Serial.printf("[FULL] capacity %.1f <= %.1f, confirming release\n", g_sensorData.capacity, FULL_RELEASE_THRESHOLD);
+        }
+        if (millis() - g_fullReleaseSinceMs >= FULL_RELEASE_DELAY_MS) {
+            g_fullConfirmed = false;
+            g_fullReleaseSinceMs = 0;
+            Serial.println("[FULL] released full lock");
+            publishTelemetry();
+        }
+    } else if (g_sensorData.capacity > FULL_RELEASE_THRESHOLD) {
+        g_fullReleaseSinceMs = 0;
+    }
+
     switch (g_systemStatus.state) {
         case STATE_INIT:
             g_systemStatus.state = STATE_STANDBY;
             break;
 
         case STATE_STANDBY:
-            if (g_sensorData.capacity >= FULL_THRESHOLD) {
+            if (g_fullConfirmed) {
                 g_systemStatus.state = STATE_FULL_LOCK;
                 g_systemStatus.currentAlert = ALERT_BOX_FULL;
+                if (g_sensorData.frontDoor) {
+                    closeFrontDoor();
+                    g_frontDoorAutoCloseAtMs = 0;
+                }
                 publishAlert(ALERT_BOX_FULL, "BOX_FULL: capacity over 90 percent");
                 buzzerBeep(500);
                 ledAlertOn();
@@ -585,7 +746,11 @@ void updateSystemState()
                 g_systemStatus.currentAlert = ALERT_AIR_BAD;
                 publishAlert(ALERT_AIR_BAD, "AIR_BAD: air quality percent over threshold");
                 ledAlertOn();
-                fanOn();
+                if (!isTimerActive(g_fanManualOverrideUntilMs)) {
+                    fanOn();
+                } else {
+                    Serial.println("[FAN] air alarm active, manual override keeps fan state");
+                }
                 buzzerBeep(500);
             }
             break;
@@ -597,7 +762,7 @@ void updateSystemState()
             break;
 
         case STATE_FULL_LOCK:
-            if (g_sensorData.capacity < FULL_THRESHOLD) {
+            if (!g_fullConfirmed) {
                 g_systemStatus.currentAlert = ALERT_NONE;
                 g_systemStatus.state = STATE_STANDBY;
                 ledAlertOff();
@@ -609,7 +774,9 @@ void updateSystemState()
                 g_systemStatus.currentAlert = ALERT_NONE;
                 g_systemStatus.state = STATE_STANDBY;
                 ledAlertOff();
-                fanOff();
+                if (!isTimerActive(g_fanManualOverrideUntilMs)) {
+                    fanOff();
+                }
                 buzzerOff();
             }
             break;
@@ -627,7 +794,7 @@ void publishTelemetry()
         return;
     }
 
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<1536> doc;
     doc["deviceId"] = DEVICE_ID;
     doc["timestamp"] = (uint32_t)(millis() / 1000);
     doc["capacity"] = g_sensorData.capacity;
@@ -640,6 +807,13 @@ void publishTelemetry()
     doc["fanStatus"] = g_sensorData.fanStatus ? 1 : 0;
     doc["frontDoor"] = g_sensorData.frontDoor ? 1 : 0;
     doc["backDoor"] = g_sensorData.backDoor ? 1 : 0;
+    doc["fullConfirmed"] = g_fullConfirmed ? 1 : 0;
+    doc["fullConfirming"] = g_fullConfirmSinceMs != 0 && !g_fullConfirmed ? 1 : 0;
+    doc["fullConfirmMs"] = g_fullConfirmSinceMs != 0 && !g_fullConfirmed ? (uint32_t)(millis() - g_fullConfirmSinceMs) : 0;
+    doc["fullReleaseMs"] = g_fullReleaseSinceMs != 0 && g_fullConfirmed ? (uint32_t)(millis() - g_fullReleaseSinceMs) : 0;
+    doc["frontManualHoldMs"] = remainingMs(g_frontManualUntilMs);
+    doc["fanManualOverrideMs"] = remainingMs(g_fanManualOverrideUntilMs);
+    doc["mpuCalibrated"] = g_mpuCalibrated ? 1 : 0;
     doc["netMode"] = g_systemStatus.netMode;
     doc["systemState"] = g_systemStatus.state == STATE_STANDBY ? "STANDBY" :
                           g_systemStatus.state == STATE_PUT_IN ? "PUT_IN" :
@@ -652,7 +826,7 @@ void publishTelemetry()
     doc["mqttPort"] = g_config.mqttPort;
     doc["staIp"] = WiFi.localIP().toString();
 
-    char buffer[1024];
+    char buffer[1536];
     size_t len = serializeJson(doc, buffer, sizeof(buffer));
     bool ok = g_mqttClient.publish("device/clothes_box/telemetry", buffer, len);
     Serial.printf("[MQTT] telemetry publish %s len=%u\n", ok ? "ok" : "fail", (unsigned)len);
@@ -702,7 +876,9 @@ void executeCommand(const char *cmd, const char *source)
             connectMqtt();
         }
     } else if (strcmp(cmd, "OPEN_FRONT") == 0 || strcmp(cmd, "FRONT_ON") == 0 || strcmp(cmd, "ON_FRONT") == 0) {
-        if (g_systemStatus.state != STATE_FULL_LOCK) {
+        g_frontManualUntilMs = millis() + FRONT_MANUAL_HOLD_MS;
+        g_frontDoorAutoCloseAtMs = 0;
+        if (!g_fullConfirmed && g_systemStatus.state != STATE_FULL_LOCK) {
             openFrontDoor();
             buzzerBeep(200);
             publishTelemetry();
@@ -710,6 +886,8 @@ void executeCommand(const char *cmd, const char *source)
             Serial.printf("[%s] rejected OPEN_FRONT, box full lock\n", source);
         }
     } else if (strcmp(cmd, "CLOSE_FRONT") == 0 || strcmp(cmd, "FRONT_OFF") == 0 || strcmp(cmd, "OFF_FRONT") == 0) {
+        g_frontManualUntilMs = millis() + FRONT_MANUAL_HOLD_MS;
+        g_frontDoorAutoCloseAtMs = 0;
         closeFrontDoor();
         publishTelemetry();
     } else if (strcmp(cmd, "OPEN_BACK") == 0 || strcmp(cmd, "BACK_ON") == 0 || strcmp(cmd, "ON_BACK") == 0) {
@@ -720,9 +898,11 @@ void executeCommand(const char *cmd, const char *source)
         closeBackDoor();
         publishTelemetry();
     } else if (strcmp(cmd, "FAN_ON") == 0) {
+        g_fanManualOverrideUntilMs = millis() + FAN_MANUAL_OVERRIDE_MS;
         fanOn();
         publishTelemetry();
     } else if (strcmp(cmd, "FAN_OFF") == 0) {
+        g_fanManualOverrideUntilMs = millis() + FAN_MANUAL_OVERRIDE_MS;
         fanOff();
         publishTelemetry();
     } else if (strcmp(cmd, "BUZZER_ON") == 0 || strcmp(cmd, "BEEP_ON") == 0) {
@@ -740,7 +920,7 @@ void executeCommand(const char *cmd, const char *source)
         publishTelemetry();
         Serial.println("[ACT] alarm stop");
     } else if (strcmp(cmd, "STATUS") == 0) {
-        Serial.printf("[STATUS] front=%d back=%d fan=%d cap=%.1f temp=%.1f hum=%.1f air=%u tilt=%.1f wifi=%d mqtt=%d\n",
+        Serial.printf("[STATUS] front=%d back=%d fan=%d cap=%.1f temp=%.1f hum=%.1f air=%u tilt=%.1f full=%d frontHoldMs=%lu fanOverrideMs=%lu mpuCal=%d wifi=%d mqtt=%d\n",
                       g_sensorData.frontDoor ? 1 : 0,
                       g_sensorData.backDoor ? 1 : 0,
                       g_sensorData.fanStatus ? 1 : 0,
@@ -749,6 +929,10 @@ void executeCommand(const char *cmd, const char *source)
                       g_sensorData.humidity,
                       g_sensorData.airQuality,
                       g_lastTiltAngle,
+                      g_fullConfirmed ? 1 : 0,
+                      (unsigned long)remainingMs(g_frontManualUntilMs),
+                      (unsigned long)remainingMs(g_fanManualOverrideUntilMs),
+                      g_mpuCalibrated ? 1 : 0,
                       g_systemStatus.wifiConnected ? 1 : 0,
                       g_systemStatus.mqttConnected ? 1 : 0);
     } else {
@@ -907,40 +1091,115 @@ void setupConfigPortal()
     });
 
     g_configServer.on("/api/local/status", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
+    g_configServer.on("/api/local/control", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
+    g_configServer.on("/api/local/fan", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
+    g_configServer.on("/api/local/unlock", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
+    g_configServer.on("/api/local/switch_mode", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
     g_configServer.on("/api/local/config", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
     g_configServer.on("/api/local/networks", HTTP_OPTIONS, []() { sendCors(); g_configServer.send(204); });
 
     g_configServer.on("/api/local/status", HTTP_GET, []() {
-        StaticJsonDocument<1024> doc;
-        doc["deviceId"] = DEVICE_ID;
-        doc["wifiSsid"] = g_config.wifiSsid;
-        doc["mqttServer"] = g_config.mqttServer;
-        doc["mqttPort"] = g_config.mqttPort;
-        doc["wifiConnected"] = g_systemStatus.wifiConnected;
-        doc["mqttConnected"] = g_systemStatus.mqttConnected;
-        doc["netMode"] = g_systemStatus.netMode;
-        doc["systemState"] = g_systemStatus.state == STATE_STANDBY ? "STANDBY" :
-                              g_systemStatus.state == STATE_PUT_IN ? "PUT_IN" :
-                              g_systemStatus.state == STATE_FULL_LOCK ? "FULL_LOCK" :
-                              g_systemStatus.state == STATE_ALARM ? "ALARM" :
-                              g_systemStatus.state == STATE_MAINTENANCE ? "MAINTENANCE" :
-                              g_systemStatus.state == STATE_AP_MODE ? "AP_MODE" : "INIT";
-        doc["staIp"] = WiFi.localIP().toString();
-        doc["apIp"] = WiFi.softAPIP().toString();
-        doc["capacity"] = g_sensorData.capacity;
-        doc["temperature"] = g_sensorData.temperature;
-        doc["humidity"] = g_sensorData.humidity;
-        doc["airQuality"] = g_sensorData.airQuality;
-        doc["humanDetect"] = g_sensorData.humanDetect;
-        doc["boxTiltAlert"] = g_sensorData.boxTiltAlert;
-        doc["tiltAngle"] = g_lastTiltAngle;
-        doc["fanStatus"] = g_sensorData.fanStatus ? 1 : 0;
-        doc["frontDoor"] = g_sensorData.frontDoor ? 1 : 0;
-        doc["backDoor"] = g_sensorData.backDoor ? 1 : 0;
-        String out;
-        serializeJson(doc, out);
-        sendCors();
-        g_configServer.send(200, "application/json", out);
+        sendJsonWithCors(200, buildStatusJson());
+    });
+
+    g_configServer.on("/api/local/control", HTTP_POST, []() {
+        StaticJsonDocument<512> doc;
+        DeserializationError err = deserializeJson(doc, g_configServer.arg("plain"));
+        if (err) {
+            sendJsonWithCors(400, "{\"code\":400,\"msg\":\"bad json\"}");
+            return;
+        }
+
+        const char *actionRaw = doc["action"] | doc["cmd"] | doc["command"] | "";
+        String action = String(actionRaw);
+        action.trim();
+        action.toUpperCase();
+        if (action.length() == 0) {
+            sendJsonWithCors(400, "{\"code\":400,\"msg\":\"缺少action\"}");
+            return;
+        }
+
+        executeCommand(action.c_str(), "HTTP_LOCAL");
+        publishTelemetry();
+        String out = String("{\"code\":200,\"msg\":\"ok\",\"data\":{\"sent\":true,\"action\":\"") + action + "\"}}";
+        sendJsonWithCors(200, out);
+    });
+
+    g_configServer.on("/api/local/fan", HTTP_POST, []() {
+        StaticJsonDocument<256> doc;
+        DeserializationError err = deserializeJson(doc, g_configServer.arg("plain"));
+        if (err) {
+            sendJsonWithCors(400, "{\"code\":400,\"msg\":\"bad json\"}");
+            return;
+        }
+
+        String action;
+        if (doc["state"] | false) {
+            action = "FAN_ON";
+        } else {
+            const char *fanRaw = doc["action"] | doc["cmd"] | "";
+            String v = String(fanRaw);
+            v.trim();
+            v.toUpperCase();
+            action = (v == "ON" || v == "FAN_ON") ? "FAN_ON" : "FAN_OFF";
+        }
+
+        executeCommand(action.c_str(), "HTTP_LOCAL");
+        publishTelemetry();
+        String out = String("{\"code\":200,\"msg\":\"ok\",\"data\":{\"sent\":true,\"action\":\"") + action + "\"}}";
+        sendJsonWithCors(200, out);
+    });
+
+    g_configServer.on("/api/local/unlock", HTTP_POST, []() {
+        StaticJsonDocument<256> doc;
+        DeserializationError err = deserializeJson(doc, g_configServer.arg("plain"));
+        if (err) {
+            sendJsonWithCors(400, "{\"code\":400,\"msg\":\"bad json\"}");
+            return;
+        }
+
+        const char *pwd = doc["pwd"] | doc["password"] | doc["unlockPassword"] | "";
+        if (strcmp(pwd, ADMIN_PASSWORD) != 0) {
+            sendJsonWithCors(401, "{\"code\":401,\"msg\":\"密码错误\"}");
+            return;
+        }
+
+        openBackDoor();
+        g_passwordCorrect = true;
+        g_systemStatus.state = STATE_MAINTENANCE;
+        buzzerBeep(300);
+        publishTelemetry();
+        sendJsonWithCors(200, "{\"code\":200,\"msg\":\"ok\",\"data\":{\"sent\":true,\"unlocked\":true}}");
+    });
+
+    g_configServer.on("/api/local/switch_mode", HTTP_POST, []() {
+        StaticJsonDocument<256> doc;
+        DeserializationError err = deserializeJson(doc, g_configServer.arg("plain"));
+        if (err) {
+            sendJsonWithCors(400, "{\"code\":400,\"msg\":\"bad json\"}");
+            return;
+        }
+
+        const char *modeRaw = doc["targetMode"] | doc["mode"] | doc["netMode"] | "";
+        String targetMode = String(modeRaw);
+        targetMode.trim();
+        targetMode.toUpperCase();
+
+        if (targetMode == "AP") {
+            setupApMode();
+        } else if (targetMode == "STA") {
+            connectWifi();
+            if (g_systemStatus.wifiConnected) {
+                connectMqtt();
+            }
+        } else {
+            sendJsonWithCors(400, "{\"code\":400,\"msg\":\"invalid targetMode\"}");
+            return;
+        }
+
+        publishTelemetry();
+        String out = String("{\"code\":200,\"msg\":\"ok\",\"data\":{\"sent\":true,\"currentNetMode\":\"") + targetMode + "\"}}";
+        sendJsonWithCors(200, out);
     });
 
     g_configServer.on("/api/local/networks", HTTP_GET, []() {
@@ -985,7 +1244,7 @@ void handleConfigPortal()
          Serial.println(path);
           if (path == "/api/local/status")  
     {
-                 StaticJsonDocument<1024> doc;
+                 StaticJsonDocument<1536> doc;
                  doc["capacity"] = g_sensorData.capacity;
                  doc["temperature"] = g_sensorData.temperature;
                  doc["humidity"] = g_sensorData.humidity;
@@ -996,8 +1255,15 @@ void handleConfigPortal()
                  doc["fanStatus"] = g_sensorData.fanStatus ? 1 : 0;
                  doc["frontDoor"] = g_sensorData.frontDoor ? 1 : 0;
                  doc["backDoor"] = g_sensorData.backDoor ? 1 : 0;
+                 doc["fullConfirmed"] = g_fullConfirmed ? 1 : 0;
+                 doc["fullConfirming"] = g_fullConfirmSinceMs != 0 && !g_fullConfirmed ? 1 : 0;
+                 doc["fullConfirmMs"] = g_fullConfirmSinceMs != 0 && !g_fullConfirmed ? (uint32_t)(millis() - g_fullConfirmSinceMs) : 0;
+                 doc["fullReleaseMs"] = g_fullReleaseSinceMs != 0 && g_fullConfirmed ? (uint32_t)(millis() - g_fullReleaseSinceMs) : 0;
+                 doc["frontManualHoldMs"] = remainingMs(g_frontManualUntilMs);
+                 doc["fanManualOverrideMs"] = remainingMs(g_fanManualOverrideUntilMs);
+                 doc["mpuCalibrated"] = g_mpuCalibrated ? 1 : 0;
                  doc["netMode"] = g_systemStatus.netMode;
-                  char buffer[1024];
+                  char buffer[1536];
                  serializeJson(doc, buffer, sizeof(buffer));
                   Serial.println("HTTP/1.1 200 OK");
                  Serial.println("Content-Type: application/json");
@@ -1016,7 +1282,10 @@ void handleConfigPortal()
                          if (password == ADMIN_PASSWORD)  
             {
                                  openBackDoor();
+                                 g_passwordCorrect = true;
+                                 g_systemStatus.state = STATE_MAINTENANCE;
                                  buzzerBeep(300);
+                                 publishTelemetry();
                                                   Serial.println("HTTP/1.1 200 OK");
                                  Serial.println("Content-Type: application/json");
                                  Serial.println("Access-Control-Allow-Origin: *");
@@ -1090,13 +1359,13 @@ void drawOled()
 {
          g_u8g2.clearBuffer();
          g_u8g2.setFont(u8g2_font_6x12_tr);
-          char line1[24];
-         char line2[24];
-         char line3[24];
-         char line4[24];
+          char line1[32];
+         char line2[32];
+         char line3[32];
+         char line4[32];
           snprintf(line1, sizeof(line1), "ID:%s", DEVICE_ID);
          snprintf(line2, sizeof(line2), "T:%.1fC H:%.1f%%", g_sensorData.temperature, g_sensorData.humidity);
-         snprintf(line3, sizeof(line3), "CAP:%.0f%% AIR:%u%%", g_sensorData.capacity, g_sensorData.airQuality);
+         snprintf(line3, sizeof(line3), "CAP:%.0f%% AIR:%u%% FULL:%d", g_sensorData.capacity, g_sensorData.airQuality, g_fullConfirmed ? 1 : 0);
               const char *stateStr = "INIT";
          switch (g_systemStatus.state)  
     {
@@ -1115,7 +1384,7 @@ void drawOled()
                  default: break;
 
     }
-         snprintf(line4, sizeof(line4), "%s %s", g_systemStatus.netMode, stateStr);
+         snprintf(line4, sizeof(line4), "%s F%d B%d V%d", stateStr, g_sensorData.frontDoor ? 1 : 0, g_sensorData.backDoor ? 1 : 0, g_sensorData.fanStatus ? 1 : 0);
           g_u8g2.drawStr(0, 14, line1);
          g_u8g2.drawStr(0, 30, line2);
          g_u8g2.drawStr(0, 46, line3);
@@ -1126,7 +1395,7 @@ void drawOled()
 
 void printSnapshot(const char *source)
 {
-    Serial.printf("[%s] DEV=%s NET=%s STATE=%d T=%.1fC H=%.1f%% CAP=%.1f%% AIR=%u%% TILT=%.1f FAN=%d FRONT=%d BACK=%d HUMAN=%d TILT_ALERT=%d WIFI=%d MQTT=%d\n",
+    Serial.printf("[%s] DEV=%s NET=%s STATE=%d T=%.1fC H=%.1f%% CAP=%.1f%% AIR=%u%% TILT=%.1f FAN=%d FRONT=%d BACK=%d HUMAN=%d TILT_ALERT=%d FULL=%d FRONT_HOLD_MS=%lu FAN_OVERRIDE_MS=%lu MPU_CAL=%d WIFI=%d MQTT=%d\n",
                   source,
                   DEVICE_ID,
                   g_systemStatus.netMode,
@@ -1141,6 +1410,10 @@ void printSnapshot(const char *source)
                   g_sensorData.backDoor ? 1 : 0,
                   g_sensorData.humanDetect ? 1 : 0,
                   g_sensorData.boxTiltAlert ? 1 : 0,
+                  g_fullConfirmed ? 1 : 0,
+                  (unsigned long)remainingMs(g_frontManualUntilMs),
+                  (unsigned long)remainingMs(g_fanManualOverrideUntilMs),
+                  g_mpuCalibrated ? 1 : 0,
                   g_systemStatus.wifiConnected ? 1 : 0,
                   g_systemStatus.mqttConnected ? 1 : 0);
 }
@@ -1197,7 +1470,22 @@ void handleSerialCommand()
                  Serial.print("Key pressed: ");
                  Serial.println(key);
                  if (key == 'D') {
-                     executeCommand("OPEN_BACK", "KEYPAD");
+                     if (g_passwordCorrect || g_systemStatus.state == STATE_MAINTENANCE) {
+                         if (g_sensorData.backDoor) {
+                             g_passwordCorrect = false;
+                             g_systemStatus.state = STATE_STANDBY;
+                             executeCommand("CLOSE_BACK", "KEYPAD");
+                             Serial.println("[KEYPAD] maintenance door closed, admin session ended");
+                         } else {
+                             g_passwordCorrect = true;
+                             g_systemStatus.state = STATE_MAINTENANCE;
+                             executeCommand("OPEN_BACK", "KEYPAD");
+                             Serial.println("[KEYPAD] maintenance door opened by admin");
+                         }
+                     } else {
+                         buzzerBeep(300);
+                         Serial.println("[KEYPAD] D ignored, enter admin password then # first");
+                     }
                      return;
                  }
                  if (key == 'C') {
@@ -1222,11 +1510,12 @@ void handleSerialCommand()
                          if (strcmp(g_passwordBuffer, ADMIN_PASSWORD) == 0)  
             {
                                  g_passwordCorrect = true;
-                                 g_systemStatus.state = STATE_MAINTENANCE;
-                                 openBackDoor();
-                                 buzzerBeep(300);
-                                 ledNormalOn();
-                                 Serial.println("Password correct, entering maintenance mode");
+                                  g_systemStatus.state = STATE_MAINTENANCE;
+                                  openBackDoor();
+                                  buzzerBeep(300);
+                                  ledNormalOn();
+                                  publishTelemetry();
+                                  Serial.println("Password correct, entering maintenance mode");
 
             }
              else  
@@ -1307,6 +1596,8 @@ void setup()
     Wire.write(0x6B);
     Wire.write(0x00);
     Wire.endTransmission(true);
+    delay(100);
+    calibrateMpu6050();
 
     g_u8g2.setI2CAddress(OLED_ADDR << 1);
     g_u8g2.begin();
@@ -1330,6 +1621,11 @@ void setup()
     g_sensorData.fanStatus = false;
     g_sensorData.frontDoor = false;
     g_sensorData.backDoor = false;
+    g_fullConfirmed = false;
+    g_fullConfirmSinceMs = 0;
+    g_fullReleaseSinceMs = 0;
+    g_frontManualUntilMs = 0;
+    g_fanManualOverrideUntilMs = 0;
 
     connectWifi();
     if (g_systemStatus.wifiConnected) {

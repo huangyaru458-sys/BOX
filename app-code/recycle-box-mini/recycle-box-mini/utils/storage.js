@@ -1,4 +1,19 @@
-﻿import { DEFAULT_CONFIG, DEMO_STATE_STORAGE_KEY, STORAGE_KEY } from './constants'
+import { DEFAULT_CONFIG, DEMO_STATE_STORAGE_KEY, STORAGE_KEY } from './constants'
+
+function normalizeBackendBaseUrl(value) {
+	const baseUrl = String(value || '').trim().replace(/\/$/, '')
+	if (!baseUrl) {
+		return ''
+	}
+
+	// #ifdef APP-PLUS
+	if (/^https?:\/\/(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0)(?::\d+)?(?:\/|$)/i.test(baseUrl)) {
+		return ''
+	}
+	// #endif
+
+	return baseUrl
+}
 
 export function loadConfig() {
 	const saved = uni.getStorageSync(STORAGE_KEY)
@@ -6,10 +21,15 @@ export function loadConfig() {
 		return { ...DEFAULT_CONFIG }
 	}
 
-	return {
+	const nextConfig = {
 		...DEFAULT_CONFIG,
 		...saved
 	}
+
+	nextConfig.backendBaseUrl = normalizeBackendBaseUrl(nextConfig.backendBaseUrl) || DEFAULT_CONFIG.backendBaseUrl
+	nextConfig.localApBaseUrl = String(nextConfig.localApBaseUrl || '').trim().replace(/\/$/, '') || DEFAULT_CONFIG.localApBaseUrl
+
+	return nextConfig
 }
 
 export function saveConfig(config) {
@@ -17,6 +37,8 @@ export function saveConfig(config) {
 		...DEFAULT_CONFIG,
 		...config
 	}
+	nextConfig.backendBaseUrl = normalizeBackendBaseUrl(nextConfig.backendBaseUrl) || DEFAULT_CONFIG.backendBaseUrl
+	nextConfig.localApBaseUrl = String(nextConfig.localApBaseUrl || '').trim().replace(/\/$/, '') || DEFAULT_CONFIG.localApBaseUrl
 	uni.setStorageSync(STORAGE_KEY, nextConfig)
 	return nextConfig
 }

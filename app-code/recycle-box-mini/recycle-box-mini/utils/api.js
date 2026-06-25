@@ -2,12 +2,15 @@
 import { request } from './request'
 
 function resolveBackendBaseUrl(config) {
-	const baseUrl = (config.backendBaseUrl || '').replace(/\/$/, '')
+	const baseUrl = String(config.backendBaseUrl || '').trim().replace(/\/$/, '')
+	if (!baseUrl) {
+		return ''
+	}
 	return baseUrl.endsWith('/api/v1/box') ? baseUrl : `${baseUrl}/api/v1/box`
 }
 
 function resolveLocalBaseUrl(config) {
-	return (config.localApBaseUrl || '').replace(/\/$/, '')
+	return String(config.localApBaseUrl || '').trim().replace(/\/$/, '')
 }
 
 function validateControlResponse(payload = {}) {

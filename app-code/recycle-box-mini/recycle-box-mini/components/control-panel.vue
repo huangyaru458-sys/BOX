@@ -28,7 +28,7 @@
 					{{ action.label }}
 				</button>
 			</view>
-			<text class="tool-hint">仅在当前生效通道为本地 AP 时可用</text>
+			<text class="tool-hint">本地直连通道可用时可操作</text>
 		</view>
 	</view>
 </template>

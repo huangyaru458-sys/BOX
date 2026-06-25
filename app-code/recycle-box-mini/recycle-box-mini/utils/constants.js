@@ -20,9 +20,23 @@ export const DEMO_SCENES = {
 	offline: 'offline'
 }
 
+function getDefaultBackendBaseUrl() {
+	// #ifdef H5
+	if (
+		typeof window !== 'undefined' &&
+		window.location &&
+		/^https?:$/.test(window.location.protocol) &&
+		window.location.host
+	) {
+		return window.location.origin
+	}
+	// #endif
+	return 'http://192.168.222.228:1880'
+}
+
 export const DEFAULT_CONFIG = {
 	mode: MODES.auto,
-	backendBaseUrl: 'http://localhost:1880',
+	backendBaseUrl: getDefaultBackendBaseUrl(),
 	localApBaseUrl: 'http://192.168.4.1',
 	deviceId: 'ESP32_BOX_001',
 	adminToken: '',
@@ -55,6 +69,7 @@ export const LOCAL_MODE_ACTIONS = [
 
 export const ERROR_MESSAGES = {
 	backendOffline: 'Node-RED 后端无法访问，自动尝试本地地址',
+	backendMissing: '手机端不能使用 localhost，请填写电脑局域网 IP，例如 http://192.168.1.23:1880',
 	localApOffline: '请检查本地地址是否可达；若使用 192.168.4.1，请先连接 ESP32 热点',
 	hardwareOffline: 'ESP32 设备硬件离线，请检查设备上电与 WiFi',
 	demoMode: '当前为演示模式：已跳过真实端口与接口检测，使用本地模拟数据打通 UI 与交互流程'

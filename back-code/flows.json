@@ -222,7 +222,7 @@
         "type": "function",
         "z": "tab_core",
         "name": "初始化建表",
-        "func": "const sqls=['CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT UNIQUE,device_name TEXT,location TEXT,online_status INTEGER DEFAULT 0,last_seen TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,online INTEGER DEFAULT 0,last_ip TEXT,mqtt_online INTEGER DEFAULT 0,battery REAL,notes TEXT)','CREATE TABLE IF NOT EXISTS device_latest_status (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT UNIQUE,capacity REAL,temperature REAL,humidity REAL,air_quality INTEGER,human_detect INTEGER,box_tilt_alert INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,net_mode TEXT,updated_at TEXT)','CREATE TABLE IF NOT EXISTS device_history (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,timestamp TEXT,capacity REAL,temperature REAL,humidity REAL,air_quality INTEGER,human_detect INTEGER,box_tilt_alert INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,net_mode TEXT)','CREATE TABLE IF NOT EXISTS device_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,alert_type TEXT,alert_msg TEXT,alert_level TEXT,is_ack INTEGER DEFAULT 0,created_at TEXT)','CREATE TABLE IF NOT EXISTS device_commands (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,action TEXT,source TEXT,result TEXT,created_at TEXT,executed_at TEXT)','CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT,password_hash TEXT,token TEXT,role TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)','CREATE TABLE IF NOT EXISTS telemetry (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,temperature REAL,humidity REAL,capacity REAL,air_quality REAL,human_detect INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,tilt_angle REAL,sensor_faults TEXT,buzzer_mode TEXT,raw_json TEXT)','CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,alert_type TEXT NOT NULL,alert_msg TEXT NOT NULL,is_ack INTEGER DEFAULT 0)','CREATE TABLE IF NOT EXISTS commands (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,action TEXT NOT NULL,status TEXT NOT NULL,source TEXT,raw_json TEXT)','INSERT OR IGNORE INTO devices (device_id,device_name,location,online_status,last_seen,online,mqtt_online) VALUES (\\'ESP32_BOX_001\\',\\'???????\\',\\'???\\',0,\\'???\\',0,0)','INSERT OR IGNORE INTO admin_users (username,password_hash,token,role) VALUES (\\'admin\\',\\'demo_hash\\',\\'admin_auth_secret01\\',\\'admin\\')']; sqls.forEach((sql,i)=>setTimeout(()=>node.send({topic:sql,payload:[]}),i*20)); return null;",
+        "func": "const sqls=['CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT UNIQUE,device_name TEXT,location TEXT,online_status INTEGER DEFAULT 0,last_seen TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,online INTEGER DEFAULT 0,last_ip TEXT,mqtt_online INTEGER DEFAULT 0,battery REAL,notes TEXT)','CREATE TABLE IF NOT EXISTS device_latest_status (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT UNIQUE,capacity REAL,temperature REAL,humidity REAL,air_quality INTEGER,human_detect INTEGER,box_tilt_alert INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,net_mode TEXT,updated_at TEXT)','CREATE TABLE IF NOT EXISTS device_history (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,timestamp TEXT,capacity REAL,temperature REAL,humidity REAL,air_quality INTEGER,human_detect INTEGER,box_tilt_alert INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,net_mode TEXT)','CREATE TABLE IF NOT EXISTS device_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,alert_type TEXT,alert_msg TEXT,alert_level TEXT,is_ack INTEGER DEFAULT 0,created_at TEXT)','CREATE TABLE IF NOT EXISTS device_commands (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT,action TEXT,source TEXT,result TEXT,created_at TEXT,executed_at TEXT)','CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT,password_hash TEXT,token TEXT,role TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)','CREATE TABLE IF NOT EXISTS telemetry (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,temperature REAL,humidity REAL,capacity REAL,air_quality REAL,human_detect INTEGER,fan_status INTEGER,front_door INTEGER,back_door INTEGER,tilt_angle REAL,sensor_faults TEXT,buzzer_mode TEXT,raw_json TEXT)','CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,alert_type TEXT NOT NULL,alert_msg TEXT NOT NULL,is_ack INTEGER DEFAULT 0)','CREATE TABLE IF NOT EXISTS commands (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL,ts INTEGER NOT NULL,action TEXT NOT NULL,status TEXT NOT NULL,source TEXT,raw_json TEXT)','INSERT OR IGNORE INTO devices (device_id,device_name,location,online_status,last_seen,online,mqtt_online) VALUES (\\'ESP32_BOX_001\\',\\'智能衣物回收箱\\',\\'实验室\\',0,\\'暂无\\',0,0)','INSERT OR IGNORE INTO admin_users (username,password_hash,token,role) VALUES (\\'admin\\',\\'demo_hash\\',\\'admin_auth_secret01\\',\\'admin\\')']; sqls.forEach((sql,i)=>setTimeout(()=>node.send({topic:sql,payload:[]}),i*20)); return null;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -328,7 +328,7 @@
         "type": "function",
         "z": "tab_core",
         "name": "遥测处理",
-        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst front = !!(d.frontLight || d.frontDoor || d.front_door);\nconst back = !!(d.backLight || d.backDoor || d.back_door);\nconst tiltAngle = Number(d.tiltAngle || d.tilt_angle || 0);\n\nconst data = {\n  deviceId: d.deviceId || d.device_id || 'ESP32_BOX_001',\n  temperature: Number(d.temperature || d.temp || 0),\n  humidity: Number(d.humidity || d.hum || 0),\n  capacity: Number(d.capacity || d.fullness || 0),\n  airQuality: Number(d.airQuality || d.air_quality || d.mq135 || 0),\n  humanDetect: !!(d.humanDetect || d.human_detect || d.pir),\n  boxTiltAlert: !!(d.boxTiltAlert || d.box_tilt_alert) || tiltAngle >= 25,\n  fanStatus: !!(d.fanStatus || d.fan_status),\n  frontLight: front,\n  backLight: back,\n  frontDoor: front,\n  backDoor: back,\n  tiltAngle,\n  sensorFaults: Array.isArray(d.sensorFaults) ? d.sensorFaults : (Array.isArray(d.sensor_faults) ? d.sensor_faults : []),\n  buzzerMode: d.buzzerMode || d.buzzer_mode || 'off',\n  netMode: d.netMode || d.net_mode || 'STA',\n  wifiSsid: d.wifiSsid || d.wifi_ssid || '',\n  mqttServer: d.mqttServer || d.mqtt_server || '',\n  mqttPort: Number(d.mqttPort || d.mqtt_port || 1883),\n  staIp: d.staIp || d.sta_ip || '',\n  systemState: d.systemState || 'STANDBY',\n  lastSeen: ts,\n  mqttOnline: true\n};\n\nglobal.set('latestTelemetry', data);\nglobal.set('latestTelemetryRaw', d);\n\nconst status = [\n  '设备: ' + data.deviceId,\n  '在线: 是',\n  '温度: ' + data.temperature.toFixed(1) + ' C',\n  '湿度: ' + data.humidity.toFixed(1) + ' %',\n  '满载率: ' + data.capacity.toFixed(1) + ' %',\n  '空气质量: ' + data.airQuality,\n  '倾角: ' + data.tiltAngle.toFixed(1) + ' deg',\n  '倾斜告警: ' + (data.boxTiltAlert ? '是' : '否'),\n  '风扇: ' + (data.fanStatus ? '开' : '关'),\n  '前门: ' + (data.frontLight ? '开' : '关'),\n  '后门: ' + (data.backLight ? '开' : '关'),\n  '故障: ' + (data.sensorFaults.length ? data.sensorFaults.join(',') : '无')\n].join('\\n');\n\nreturn [\n  { payload: data.temperature, topic: 'temperature' },\n  { payload: data.humidity, topic: 'humidity' },\n  { payload: data.capacity, topic: 'capacity' },\n  { payload: data.airQuality, topic: 'airQuality' },\n  { payload: data.tiltAngle, topic: 'tiltAngle' },\n  { payload: status },\n  { topic: 'INSERT INTO telemetry (device_id,ts,temperature,humidity,capacity,air_quality,human_detect,fan_status,front_door,back_door,tilt_angle,sensor_faults,buzzer_mode,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12,$p13,$p14)', payload: [data.deviceId, ts, data.temperature, data.humidity, data.capacity, data.airQuality, data.humanDetect ? 1 : 0, data.fanStatus ? 1 : 0, data.frontLight ? 1 : 0, data.backLight ? 1 : 0, data.tiltAngle, JSON.stringify(data.sensorFaults), data.buzzerMode, JSON.stringify(d)] },\n  { topic: 'INSERT INTO devices (device_id,device_name,online,last_seen,mqtt_online) VALUES ($p1,$p2,$p3,$p4,$p5) ON CONFLICT(device_id) DO UPDATE SET device_name=excluded.device_name,online=excluded.online,last_seen=excluded.last_seen,mqtt_online=excluded.mqtt_online', payload: [data.deviceId, 'ESP32_BOX_001', 1, ts, 1] }\n];",
+        "func": "const raw = msg.payload || {};\nconst prev = global.get('latestTelemetry') || {};\nconst now = Date.now();\n\nfunction toNumber(...vals) {\n  for (const v of vals) {\n    if (v === null || v === undefined || v === '') continue;\n    const n = Number(v);\n    if (Number.isFinite(n)) return n;\n  }\n  return undefined;\n}\n\nfunction toBool(...vals) {\n  for (const v of vals) {\n    if (v === null || v === undefined || v === '') continue;\n    if (typeof v === 'boolean') return v;\n    if (typeof v === 'number') return v !== 0;\n    const s = String(v).trim().toLowerCase();\n    if (['1', 'true', 'on', 'open', 'opened', 'yes', 'y'].includes(s)) return true;\n    if (['0', 'false', 'off', 'close', 'closed', 'no', 'n'].includes(s)) return false;\n  }\n  return undefined;\n}\n\nconst deviceId = String(raw.deviceId || raw.device_id || prev.deviceId || 'ESP32_BOX_001');\nconst front = toBool(raw.frontLight, raw.frontDoor, raw.front_door, prev.frontDoor, prev.frontLight);\nconst back = toBool(raw.backLight, raw.backDoor, raw.back_door, prev.backDoor, prev.backLight);\nconst temperature = toNumber(raw.temperature, raw.temp, prev.temperature);\nconst humidity = toNumber(raw.humidity, raw.hum, prev.humidity);\nconst capacity = toNumber(raw.capacity, raw.fullness, prev.capacity);\nconst airQuality = toNumber(raw.airQuality, raw.air_quality, raw.mq135, prev.airQuality);\nconst tiltAngle = toNumber(raw.tiltAngle, raw.tilt_angle, prev.tiltAngle);\nconst humanDetect = toBool(raw.humanDetect, raw.human_detect, raw.pir, prev.humanDetect);\nconst fanStatus = toBool(raw.fanStatus, raw.fan_status, prev.fanStatus);\nconst boxTiltAlert = toBool(raw.boxTiltAlert, raw.box_tilt_alert, prev.boxTiltAlert) || (Number.isFinite(tiltAngle) ? tiltAngle >= 25 : !!prev.boxTiltAlert);\nconst sensorFaults = Array.isArray(raw.sensorFaults) ? raw.sensorFaults : (Array.isArray(raw.sensor_faults) ? raw.sensor_faults : (Array.isArray(prev.sensorFaults) ? prev.sensorFaults : []));\nconst buzzerMode = raw.buzzerMode || raw.buzzer_mode || prev.buzzerMode || 'off';\nconst netMode = raw.netMode || raw.net_mode || prev.netMode || 'STA';\nconst wifiSsid = raw.wifiSsid || raw.wifi_ssid || prev.wifiSsid || '';\nconst mqttServer = raw.mqttServer || raw.mqtt_server || prev.mqttServer || '';\nconst mqttPort = toNumber(raw.mqttPort, raw.mqtt_port, prev.mqttPort, 1883) || 1883;\nconst staIp = raw.staIp || raw.sta_ip || prev.staIp || '';\nconst systemState = raw.systemState || prev.systemState || 'STANDBY';\nconst deviceTsRaw = toNumber(raw.timestamp, raw.ts, raw.deviceTs);\nconst deviceTimestampMs = Number.isFinite(deviceTsRaw) ? (deviceTsRaw < 1e12 ? deviceTsRaw * 1000 : deviceTsRaw) : null;\n\nconst data = {\n  deviceId,\n  temperature: Number.isFinite(temperature) ? temperature : Number(prev.temperature || 0),\n  humidity: Number.isFinite(humidity) ? humidity : Number(prev.humidity || 0),\n  capacity: Number.isFinite(capacity) ? capacity : Number(prev.capacity || 0),\n  airQuality: Number.isFinite(airQuality) ? airQuality : Number(prev.airQuality || 0),\n  humanDetect: !!(typeof humanDetect === 'boolean' ? humanDetect : prev.humanDetect),\n  boxTiltAlert: !!boxTiltAlert,\n  fanStatus: !!(typeof fanStatus === 'boolean' ? fanStatus : prev.fanStatus),\n  frontLight: typeof front === 'boolean' ? front : !!prev.frontLight,\n  backLight: typeof back === 'boolean' ? back : !!prev.backLight,\n  frontDoor: typeof front === 'boolean' ? front : !!prev.frontDoor,\n  backDoor: typeof back === 'boolean' ? back : !!prev.backDoor,\n  tiltAngle: Number.isFinite(tiltAngle) ? tiltAngle : Number(prev.tiltAngle || 0),\n  sensorFaults,\n  buzzerMode,\n  netMode,\n  wifiSsid,\n  mqttServer,\n  mqttPort,\n  staIp,\n  systemState,\n  deviceTimestampMs,\n  lastSeen: now,\n  mqttOnline: true\n};\n\nglobal.set('latestTelemetry', data);\nglobal.set('latestTelemetryRaw', raw);\n\nconst status = [\n  '设备: ' + data.deviceId,\n  '在线: 是',\n  '温度: ' + data.temperature.toFixed(1) + ' C',\n  '湿度: ' + data.humidity.toFixed(1) + ' %',\n  '满载率: ' + data.capacity.toFixed(1) + ' %',\n  '空气质量: ' + data.airQuality.toFixed(0),\n  '倾角: ' + data.tiltAngle.toFixed(1) + ' deg',\n  '倾斜告警: ' + (data.boxTiltAlert ? '是' : '否'),\n  '风扇: ' + (data.fanStatus ? '开' : '关'),\n  '前门: ' + (data.frontDoor ? '开' : '关'),\n  '后门: ' + (data.backDoor ? '开' : '关'),\n  '故障: ' + (data.sensorFaults.length ? data.sensorFaults.join(',') : '无')\n].join('\\n');\n\nreturn [\n  { payload: data.temperature, topic: 'temperature' },\n  { payload: data.humidity, topic: 'humidity' },\n  { payload: data.capacity, topic: 'capacity' },\n  { payload: data.airQuality, topic: 'airQuality' },\n  { payload: data.tiltAngle, topic: 'tiltAngle' },\n  { payload: status },\n  { topic: 'INSERT INTO telemetry (device_id,ts,temperature,humidity,capacity,air_quality,human_detect,fan_status,front_door,back_door,tilt_angle,sensor_faults,buzzer_mode,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12,$p13,$p14)', payload: [data.deviceId, now, data.temperature, data.humidity, data.capacity, data.airQuality, data.humanDetect ? 1 : 0, data.fanStatus ? 1 : 0, data.frontDoor ? 1 : 0, data.backDoor ? 1 : 0, data.tiltAngle, JSON.stringify(data.sensorFaults), data.buzzerMode, JSON.stringify(raw)] },\n  { topic: 'INSERT INTO devices (device_id,device_name,online,last_seen,mqtt_online) VALUES ($p1,$p2,$p3,$p4,$p5) ON CONFLICT(device_id) DO UPDATE SET device_name=excluded.device_name,online=excluded.online,last_seen=excluded.last_seen,mqtt_online=excluded.mqtt_online', payload: [data.deviceId, 'ESP32_BOX_001', 1, now, 1] }\n];",
         "outputs": 9,
         "timeout": "",
         "noerr": 0,
@@ -343,7 +343,11 @@
                 "375c6dd203d4e479"
             ],
             [
-                "ee9583249925f0d4",
+                "fd532a8cbe18bf50",
+                "375c6dd203d4e479"
+            ],
+            [
+                "49f60e2b1543a408",
                 "375c6dd203d4e479"
             ],
             [
@@ -351,11 +355,7 @@
                 "375c6dd203d4e479"
             ],
             [
-                "fd532a8cbe18bf50",
-                "375c6dd203d4e479"
-            ],
-            [
-                "49f60e2b1543a408",
+                "ee9583249925f0d4",
                 "375c6dd203d4e479"
             ],
             [
@@ -645,8 +645,8 @@
         "sqlquery": "msg.topic",
         "sql": "",
         "name": "SQLite执行",
-        "x": 820,
-        "y": 180,
+        "x": 850,
+        "y": 100,
         "wires": [
             [
                 "debug_db_core"
@@ -667,7 +667,7 @@
         "statusVal": "",
         "statusType": "auto",
         "x": 1030,
-        "y": 180,
+        "y": 100,
         "wires": []
     },
     {
@@ -677,8 +677,8 @@
         "name": "温度",
         "group": "ui_group_metrics",
         "order": 1,
-        "width": "2",
-        "height": 3,
+        "width": "4",
+        "height": 4,
         "gtype": "gage",
         "title": "温度",
         "label": "°C",
@@ -705,8 +705,8 @@
         "name": "湿度",
         "group": "ui_group_metrics",
         "order": 2,
-        "width": "2",
-        "height": 3,
+        "width": "4",
+        "height": 4,
         "gtype": "gage",
         "title": "湿度",
         "label": "%",
@@ -733,8 +733,8 @@
         "name": "满载率",
         "group": "ui_group_metrics",
         "order": 3,
-        "width": "2",
-        "height": 3,
+        "width": "4",
+        "height": 4,
         "gtype": "gage",
         "title": "满载率",
         "label": "%",
@@ -750,8 +750,8 @@
         "seg2": "90",
         "diff": false,
         "className": "",
-        "x": 770,
-        "y": 360,
+        "x": 750,
+        "y": 460,
         "wires": []
     },
     {
@@ -761,8 +761,8 @@
         "name": "空气质量",
         "group": "ui_group_metrics",
         "order": 4,
-        "width": "2",
-        "height": 3,
+        "width": "4",
+        "height": 4,
         "gtype": "gage",
         "title": "空气质量",
         "label": "ppm",
@@ -778,7 +778,7 @@
         "seg2": "700",
         "diff": false,
         "className": "",
-        "x": 840,
+        "x": 860,
         "y": 420,
         "wires": []
     },
@@ -789,8 +789,8 @@
         "name": "倾斜角",
         "group": "ui_group_metrics",
         "order": 5,
-        "width": "2",
-        "height": 3,
+        "width": "4",
+        "height": 4,
         "gtype": "gage",
         "title": "倾斜角",
         "label": "°",
@@ -818,7 +818,7 @@
         "group": "ui_group_metrics",
         "order": 6,
         "width": 12,
-        "height": "5",
+        "height": 5,
         "label": "实时曲线",
         "chartType": "line",
         "legend": "true",
@@ -863,7 +863,7 @@
         "order": 7,
         "width": 12,
         "height": 4,
-        "format": "<div style=\"white-space:pre-wrap;font-family:monospace;line-height:1.6\">{{msg.payload}}</div>",
+        "format": "<style>\n  .panel-card {\n    position: relative;\n    padding: 16px 18px 14px;\n    border-radius: 16px;\n    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,251,247,0.96));\n    border: 1px solid rgba(31,179,107,0.14);\n    box-shadow: 0 16px 34px rgba(24,52,78,0.10);\n    overflow: hidden;\n  }\n  .panel-card::before {\n    content: \"\";\n    position: absolute;\n    inset: 0 auto 0 0;\n    width: 5px;\n    background: linear-gradient(180deg, #1fb36b, #1592d0);\n  }\n  .panel-head {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 12px;\n    margin-bottom: 10px;\n  }\n  .panel-title {\n    color: #177d52;\n    font-size: 18px;\n    font-weight: 900;\n    line-height: 1.2;\n  }\n  .panel-chip {\n    padding: 4px 10px;\n    border-radius: 999px;\n    background: rgba(31,179,107,0.10);\n    border: 1px solid rgba(31,179,107,0.16);\n    color: #177d52;\n    font-size: 12px;\n    font-weight: 800;\n    white-space: nowrap;\n  }\n  .panel-body {\n    white-space: pre-wrap;\n    word-break: break-word;\n    line-height: 1.75;\n    color: #32454a;\n    font-size: 14px;\n    font-weight: 700;\n    font-family: \"Microsoft YaHei\", Arial, sans-serif;\n  }\n</style>\n<div class=\"panel-card\">\n  <div class=\"panel-head\">\n    <div class=\"panel-title\">设备状态</div>\n    <div class=\"panel-chip\">Live</div>\n  </div>\n  <div class=\"panel-body\">{{msg.payload}}</div>\n</div>",
         "storeOutMessages": true,
         "fwdInMessages": true,
         "resendOnRefresh": true,
@@ -882,8 +882,8 @@
         "name": "告警列表",
         "order": 1,
         "width": 12,
-        "height": 6,
-        "format": "<div style=\"white-space:pre-wrap;font-family:monospace;line-height:1.6\">{{msg.payload}}</div>",
+        "height": 5,
+        "format": "<style>\n  .panel-card {\n    position: relative;\n    padding: 16px 18px 14px;\n    border-radius: 16px;\n    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(251,249,241,0.96));\n    border: 1px solid rgba(242,200,76,0.18);\n    box-shadow: 0 16px 34px rgba(24,52,78,0.10);\n    overflow: hidden;\n  }\n  .panel-card::before {\n    content: \"\";\n    position: absolute;\n    inset: 0 auto 0 0;\n    width: 5px;\n    background: linear-gradient(180deg, #f2c84c, #1fb36b);\n  }\n  .panel-head {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 12px;\n    margin-bottom: 10px;\n  }\n  .panel-title {\n    color: #b57a08;\n    font-size: 18px;\n    font-weight: 900;\n    line-height: 1.2;\n  }\n  .panel-chip {\n    padding: 4px 10px;\n    border-radius: 999px;\n    background: rgba(242,200,76,0.14);\n    border: 1px solid rgba(242,200,76,0.22);\n    color: #9f6700;\n    font-size: 12px;\n    font-weight: 800;\n    white-space: nowrap;\n  }\n  .panel-body {\n    white-space: pre-wrap;\n    word-break: break-word;\n    line-height: 1.75;\n    color: #32454a;\n    font-size: 14px;\n    font-weight: 700;\n    font-family: \"Microsoft YaHei\", Arial, sans-serif;\n  }\n</style>\n<div class=\"panel-card\">\n  <div class=\"panel-head\">\n    <div class=\"panel-title\">告警信息</div>\n    <div class=\"panel-chip\">Alert</div>\n  </div>\n  <div class=\"panel-body\">{{msg.payload}}</div>\n</div>",
         "storeOutMessages": true,
         "fwdInMessages": true,
         "resendOnRefresh": true,
@@ -916,7 +916,7 @@
         "type": "function",
         "z": "tab_api",
         "name": "状态JSON",
-        "func": "const d = global.get('latestTelemetry') || { deviceId: 'ESP32_BOX_001', temperature: 0, humidity: 0, capacity: 0, airQuality: 0, humanDetect: false, boxTiltAlert: false, fanStatus: false, frontLight: false, backLight: false, frontDoor: false, backDoor: false, tiltAngle: 0, sensorFaults: [], buzzerMode: 'off', netMode: 'STA', systemState: 'OFFLINE', lastSeen: 0, mqttOnline: false, mqttBrokerOnline: true };\nconst age = d.lastSeen ? Date.now() - d.lastSeen : null;\nconst front = Boolean(d.frontLight ?? d.frontDoor ?? d.front_door ?? false);\nconst back = Boolean(d.backLight ?? d.backDoor ?? d.back_door ?? false);\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { ...d, frontLight: front, frontDoor: front, backLight: back, backDoor: back, online: age !== null && age < 15000, lastTelemetryAgeMs: age, mqttBrokerOnline: true, systemState: d.systemState || (age !== null && age < 15000 ? 'STANDBY' : 'OFFLINE') } };\nreturn msg;",
+        "func": "const d = global.get('latestTelemetry') || { deviceId: 'ESP32_BOX_001', temperature: 0, humidity: 0, capacity: 0, airQuality: 0, humanDetect: false, boxTiltAlert: false, fanStatus: false, frontLight: false, backLight: false, frontDoor: false, backDoor: false, tiltAngle: 0, sensorFaults: [], buzzerMode: 'off', netMode: 'STA', systemState: 'OFFLINE', lastSeen: 0, mqttOnline: false, mqttBrokerOnline: true, fullConfirmed: false, fullConfirming: false, fullConfirmMs: 0, fullReleaseMs: 0, frontManualHoldMs: 0, fanManualOverrideMs: 0, mpuCalibrated: false };\nconst age = d.lastSeen ? Date.now() - d.lastSeen : null;\nconst front = Boolean(d.frontLight ?? d.frontDoor ?? d.front_door ?? false);\nconst back = Boolean(d.backLight ?? d.backDoor ?? d.back_door ?? false);\nconst online = age !== null && age < 15000;\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { ...d, frontLight: front, frontDoor: front, backLight: back, backDoor: back, online, lastTelemetryAgeMs: age, updatedAt: d.lastSeen ? new Date(d.lastSeen).toISOString() : null, mqttBrokerOnline: true, systemState: d.systemState || (online ? 'STANDBY' : 'OFFLINE') } };\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -982,7 +982,7 @@
         "type": "function",
         "z": "tab_api",
         "name": "历史返回",
-        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];rows.reverse();msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{timeline:rows.map(r=>new Date(r.ts).toLocaleTimeString('zh-CN',{hour12:false})),tempData:rows.map(r=>Number(r.temperature||0)),humidityData:rows.map(r=>Number(r.humidity||0)),airData:rows.map(r=>Number(r.air_quality||0)),capacityData:rows.map(r=>Number(r.capacity||0)),tiltData:rows.map(r=>Number(r.tilt_angle||0))}};return msg;",
+        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];rows.reverse();msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{timeline:rows.map(r=>new Date(r.ts).toLocaleTimeString('zh-CN',{hour12:false})),tempData:rows.map(r=>Number(r.temperature||0)),humidityData:rows.map(r=>Number(r.humidity||0)),airData:rows.map(r=>Number(r.air_quality||0)),capacityData:rows.map(r=>Number(r.capacity||0)),tiltData:rows.map(r=>Number(r.tilt_angle||0)),fanData:rows.map(r=>Number(r.fan_status||0)),frontData:rows.map(r=>Number(r.front_door||0)),backData:rows.map(r=>Number(r.back_door||0))}};return msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1114,7 +1114,7 @@
         "type": "function",
         "z": "tab_api",
         "name": "告警返回",
-        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];msg.statusCode=200;msg.payload={code:200,msg:'ok',data:rows.map(r=>({id:r.id,deviceId:r.device_id,alertType:r.alert_type,alertMsg:r.alert_msg,is_ack:Boolean(r.is_ack),time:new Date(r.ts).toLocaleString('zh-CN',{hour12:false})}))};return msg;",
+        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];msg.statusCode=200;msg.payload={code:200,msg:'ok',data:rows.map(r=>({id:r.id,deviceId:r.device_id,alertType:r.alert_type,alertMsg:r.alert_msg,is_ack:Boolean(r.is_ack),time:new Date(r.ts).toLocaleString('zh-CN',{hour12:false}),ts:r.ts}))};return msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1180,7 +1180,7 @@
         "type": "function",
         "z": "tab_api",
         "name": "指令返回",
-        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];msg.statusCode=200;msg.payload={code:200,msg:'ok',data:rows.map(r=>({id:r.id,deviceId:r.device_id,action:r.action,status:r.status,source:r.source,time:new Date(r.ts).toLocaleString('zh-CN',{hour12:false})}))};return msg;",
+        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];msg.statusCode=200;msg.payload={code:200,msg:'ok',data:rows.map(r=>({id:r.id,deviceId:r.device_id,action:r.action,status:r.status,source:r.source,time:new Date(r.ts).toLocaleString('zh-CN',{hour12:false}),ts:r.ts,raw:r.raw_json||null}))};return msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1426,7 +1426,7 @@
         "type": "function",
         "z": "tab_api",
         "name": "告警已读SQL",
-        "func": "const body=msg.payload||{};const deviceId=body.deviceId||'ESP32_BOX_001';if(body.id){msg.topic='UPDATE alerts SET is_ack = 1 WHERE id = $p1';msg.payload=[body.id];}else{msg.topic='UPDATE alerts SET is_ack = 1 WHERE device_id = $p1';msg.payload=[deviceId];}msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{updated:true}};return [msg,null];",
+        "func": "const body=msg.payload||{};const deviceId=body.deviceId||'ESP32_BOX_001';if(body.id){msg.topic='UPDATE alerts SET is_ack = 1 WHERE id = $p1';msg.payload=[body.id];}else{msg.topic='UPDATE alerts SET is_ack = 1 WHERE device_id = $p1';msg.payload=[deviceId];}msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{updated:true,deviceId}};return [msg,null];",
         "outputs": 2,
         "noerr": 0,
         "initialize": "",
@@ -1612,33 +1612,13 @@
         ]
     },
     {
-        "id": "ui_tpl_status",
-        "type": "ui_template",
-        "z": "tab_dash",
-        "group": "ui_group_metrics",
-        "name": "状态摘要",
-        "order": 7,
-        "width": 12,
-        "height": 4,
-        "format": "<div style=\"white-space:pre-wrap;font-family:monospace;line-height:1.6\">{{msg.payload}}</div>",
-        "storeOutMessages": true,
-        "fwdInMessages": true,
-        "resendOnRefresh": true,
-        "templateScope": "local",
-        "x": 580,
-        "y": 260,
-        "wires": [
-            []
-        ]
-    },
-    {
         "id": "ui_button_dash_open_front",
         "type": "ui_button",
         "z": "tab_dash",
         "name": "前门开",
         "group": "ui_group_control",
         "order": 10,
-        "width": 3,
+        "width": 6,
         "height": 1,
         "passthru": false,
         "label": "打开前门",
@@ -1665,7 +1645,7 @@
         "name": "前门关",
         "group": "ui_group_control",
         "order": 11,
-        "width": 3,
+        "width": 6,
         "height": 1,
         "passthru": false,
         "label": "关闭前门",
@@ -1692,7 +1672,7 @@
         "name": "后门开",
         "group": "ui_group_control",
         "order": 12,
-        "width": 3,
+        "width": 6,
         "height": 1,
         "passthru": false,
         "label": "打开后门",
@@ -1719,7 +1699,7 @@
         "name": "后门关",
         "group": "ui_group_control",
         "order": 13,
-        "width": 3,
+        "width": 6,
         "height": 1,
         "passthru": false,
         "label": "关闭后门",
@@ -1746,7 +1726,7 @@
         "name": "风扇开",
         "group": "ui_group_control",
         "order": 14,
-        "width": 3,
+        "width": 6,
         "height": 1,
         "passthru": false,
         "label": "风扇开启",
@@ -1775,7 +1755,7 @@
         "name": "风扇关",
         "group": "ui_group_control",
         "order": 15,
-        "width": 3,
+        "width": 6,
         "height": 1,
         "passthru": false,
         "label": "风扇关闭",
@@ -1802,7 +1782,7 @@
         "name": "取消告警",
         "group": "ui_group_control",
         "order": 16,
-        "width": 3,
+        "width": 12,
         "height": 1,
         "passthru": false,
         "label": "取消告警",
@@ -1843,9 +1823,7 @@
             [
                 "db_dash"
             ],
-            [
-                "ui_tpl_status"
-            ]
+            []
         ]
     },
     {
@@ -1906,9 +1884,9 @@
         "group": "ui_group_metrics",
         "name": "仪表盘整体美化CSS",
         "order": 0,
-        "width": 12,
-        "height": 5,
-        "format": "<style>\n  :root {\n    --page-bg: #eef5f8;\n    --panel: #ffffff;\n    --panel-soft: #f7fafc;\n    --line: #dbe7ef;\n    --text: #1f2937;\n    --muted: #64748b;\n    --brand: #1687c7;\n    --brand-dark: #145f8f;\n    --accent: #22c55e;\n    --warn: #f59e0b;\n    --danger: #ef4444;\n    --shadow: 0 8px 22px rgba(15, 23, 42, 0.08);\n  }\n\n  body,\n  md-content,\n  .nr-dashboard-theme md-content {\n    background: linear-gradient(180deg, #eaf5fb 0%, #f7fbfd 42%, #eef5f8 100%) !important;\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\n    color: var(--text) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar {\n    height: 58px !important;\n    min-height: 58px !important;\n    background: linear-gradient(90deg, #155f8e, #1f8fc9) !important;\n    box-shadow: 0 4px 14px rgba(20, 95, 143, 0.22) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar .md-toolbar-tools {\n    height: 58px !important;\n    font-size: 22px !important;\n    font-weight: 900 !important;\n    letter-spacing: 0 !important;\n  }\n\n  .nr-dashboard-theme md-tabs-wrapper {\n    background: rgba(255, 255, 255, 0.88) !important;\n    border-bottom: 1px solid var(--line) !important;\n  }\n\n  .nr-dashboard-theme md-tab-item {\n    color: var(--muted) !important;\n    font-weight: 800 !important;\n    letter-spacing: 0 !important;\n  }\n\n  .nr-dashboard-theme md-tab-item.md-active {\n    color: var(--brand) !important;\n  }\n\n  .nr-dashboard-theme md-ink-bar {\n    background: var(--brand) !important;\n    height: 3px !important;\n  }\n\n  .nr-dashboard-cardcontainer {\n    max-width: 1320px !important;\n    margin: 0 auto !important;\n    padding: 14px 18px 28px !important;\n    display: grid !important;\n    grid-template-columns: minmax(0, 1fr) 330px !important;\n    gap: 14px !important;\n    align-items: start !important;\n  }\n\n  md-card,\n  .nr-dashboard-theme md-card {\n    border-radius: 10px !important;\n    background: var(--panel) !important;\n    border: 1px solid var(--line) !important;\n    box-shadow: var(--shadow) !important;\n    overflow: hidden !important;\n  }\n\n  md-card:hover {\n    transform: translateY(-1px);\n    transition: 140ms ease;\n  }\n\n  .nr-dashboard-cardtitle {\n    color: var(--brand) !important;\n    font-size: 19px !important;\n    font-weight: 900 !important;\n    padding: 12px 16px 4px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge {\n    padding: 0 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge svg {\n    max-height: 145px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge text {\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\n    font-weight: 800 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-chart {\n    min-height: 300px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-chart canvas {\n    border-radius: 8px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button {\n    border-radius: 8px !important;\n    min-height: 44px !important;\n    font-weight: 900 !important;\n    font-size: 15px !important;\n    color: #ffffff !important;\n    background: linear-gradient(180deg, #23a7ee, #1687c7) !important;\n    box-shadow: 0 6px 14px rgba(22, 135, 199, 0.22) !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button:hover {\n    filter: brightness(1.04);\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button:active {\n    transform: translateY(1px);\n  }\n\n  .nr-dashboard-theme .nr-dashboard-template {\n    color: var(--text) !important;\n    font-size: 14px !important;\n    line-height: 1.65 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-template pre,\n  .nr-dashboard-theme .nr-dashboard-template code {\n    background: #0f172a !important;\n    color: #dff6ff !important;\n    border-radius: 8px !important;\n    padding: 10px !important;\n    font-size: 13px !important;\n  }\n\n  /* 左侧实时监控区域：让仪表规整成 4 + 1 + 曲线 */\n  md-card:has(.nr-dashboard-gauge) {\n    min-height: 178px !important;\n  }\n\n  /* 右侧控制和告警区域固定宽度，避免被挤到屏幕外 */\n  md-card:has(.nr-dashboard-button) {\n    min-width: 0 !important;\n  }\n\n  /* 状态摘要别太高，做成信息面板 */\n  .nr-dashboard-template div,\n  .nr-dashboard-template p {\n    color: var(--text) !important;\n  }\n\n  /* 加一个轻量 3D 顶部，不影响任何接口 */\n  #iot-dashboard-hero {\n    grid-column: 1 / -1;\n    min-height: 132px;\n    border-radius: 12px;\n    background:\n      linear-gradient(135deg, rgba(18, 83, 124, 0.96), rgba(32, 151, 205, 0.92)),\n      radial-gradient(circle at 82% 30%, rgba(255,255,255,0.3), transparent 25%);\n    box-shadow: 0 10px 24px rgba(20, 95, 143, 0.22);\n    color: #fff;\n    overflow: hidden;\n    position: relative;\n    display: grid;\n    grid-template-columns: 1fr 210px;\n    align-items: center;\n    padding: 18px 24px;\n    margin-bottom: 2px;\n  }\n\n  #iot-dashboard-hero h1 {\n    margin: 0 0 8px;\n    font-size: 28px;\n    font-weight: 950;\n  }\n\n  #iot-dashboard-hero p {\n    margin: 0;\n    color: rgba(255,255,255,0.84);\n    font-weight: 700;\n  }\n\n  .hero-tags {\n    display: flex;\n    flex-wrap: wrap;\n    gap: 8px;\n    margin-top: 14px;\n  }\n\n  .hero-tags span {\n    padding: 6px 10px;\n    border-radius: 999px;\n    background: rgba(255,255,255,0.15);\n    border: 1px solid rgba(255,255,255,0.2);\n    font-size: 12px;\n    font-weight: 800;\n  }\n\n  .mini-scene {\n    height: 106px;\n    perspective: 560px;\n    display: grid;\n    place-items: center;\n  }\n\n  .mini-box {\n    width: 78px;\n    height: 78px;\n    position: relative;\n    transform-style: preserve-3d;\n    animation: spinBox 6s linear infinite;\n  }\n\n  .mini-box span {\n    position: absolute;\n    width: 78px;\n    height: 78px;\n    border-radius: 8px;\n    border: 2px solid rgba(255,255,255,0.42);\n    background: linear-gradient(135deg, rgba(255,255,255,0.86), rgba(190,232,255,0.5));\n  }\n\n  .mini-box .f1 { transform: translateZ(39px); }\n  .mini-box .f2 { transform: rotateY(180deg) translateZ(39px); }\n  .mini-box .f3 { transform: rotateY(90deg) translateZ(39px); }\n  .mini-box .f4 { transform: rotateY(-90deg) translateZ(39px); }\n  .mini-box .f5 { transform: rotateX(90deg) translateZ(39px); }\n  .mini-box .f6 { transform: rotateX(-90deg) translateZ(39px); }\n\n  @keyframes spinBox {\n    from { transform: rotateX(-18deg) rotateY(0deg); }\n    to { transform: rotateX(-18deg) rotateY(360deg); }\n  }\n\n  @media (max-width: 1100px) {\n    .nr-dashboard-cardcontainer {\n      grid-template-columns: 1fr !important;\n      padding: 12px !important;\n    }\n\n    #iot-dashboard-hero {\n      grid-template-columns: 1fr;\n    }\n\n    .mini-scene {\n      display: none;\n    }\n  }\n</style>\n\n<script>\n(function () {\n  function addHero() {\n    if (document.getElementById(\"iot-dashboard-hero\")) return;\n    var container = document.querySelector(\".nr-dashboard-cardcontainer\");\n    if (!container) return;\n\n    var hero = document.createElement(\"div\");\n    hero.id = \"iot-dashboard-hero\";\n    hero.innerHTML = `\n      <div>\n        <h1>智能衣物回收箱</h1>\n        <p>实时监测、远程控制、告警联动、历史数据统一展示</p>\n        <div class=\"hero-tags\">\n          <span>ESP32</span>\n          <span>MQTT</span>\n          <span>SQLite</span>\n          <span>GPIO33 / GPIO12 / GPIO14</span>\n        </div>\n      </div>\n      <div class=\"mini-scene\">\n        <div class=\"mini-box\">\n          <span class=\"f1\"></span><span class=\"f2\"></span><span class=\"f3\"></span>\n          <span class=\"f4\"></span><span class=\"f5\"></span><span class=\"f6\"></span>\n        </div>\n      </div>\n    `;\n    container.prepend(hero);\n  }\n\n  setTimeout(addHero, 500);\n  setTimeout(addHero, 1500);\n})();\n</script>",
+        "width": 18,
+        "height": 4,
+        "format": "\n<style>\n  :root{\n    --bg:#f4faf6;\n    --panel:rgba(255,255,255,.96);\n    --line:rgba(31,179,107,.14);\n    --text:#183128;\n    --muted:#6a7a72;\n    --green:#1fb36b;\n    --green2:#159d5b;\n    --blue:#1d9bf0;\n    --amber:#f2c84c;\n    --shadow:0 12px 28px rgba(24,52,78,.10);\n  }\n\n  html, body,\n  md-content,\n  .nr-dashboard-theme md-content {\n    background: var(--bg) !important;\n    color: var(--text) !important;\n    font-family: \"Microsoft YaHei\", Arial, sans-serif !important;\n  }\n\n  .nr-dashboard-theme md-toolbar {\n    min-height: 60px !important;\n    background: linear-gradient(90deg, #145f80, #1e965f) !important;\n    box-shadow: 0 8px 24px rgba(16,75,118,.18) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar .md-toolbar-tools {\n    font-size: 20px !important;\n    font-weight: 900 !important;\n    letter-spacing: 0 !important;\n  }\n\n  .nr-dashboard-theme md-tabs-wrapper {\n    background: rgba(255,255,255,.92) !important;\n    border-bottom: 1px solid var(--line) !important;\n  }\n\n  .nr-dashboard-theme md-tab-item {\n    color: var(--muted) !important;\n    font-weight: 800 !important;\n  }\n\n  .nr-dashboard-theme md-tab-item.md-active {\n    color: #177d52 !important;\n  }\n\n  .nr-dashboard-theme md-ink-bar {\n    height: 3px !important;\n    background: linear-gradient(90deg, var(--green), var(--amber)) !important;\n  }\n\n  .nr-dashboard-cardcontainer {\n    max-width: 1460px !important;\n    margin: 0 auto !important;\n    padding: 14px !important;\n  }\n\n  md-card,\n  .nr-dashboard-theme md-card {\n    border-radius: 14px !important;\n    background: var(--panel) !important;\n    border: 1px solid rgba(255,255,255,.82) !important;\n    box-shadow: var(--shadow) !important;\n    overflow: hidden !important;\n  }\n\n  .nr-dashboard-button button {\n    border-radius: 12px !important;\n    min-height: 48px !important;\n    font-weight: 900 !important;\n    color: #fff !important;\n    border: none !important;\n  }\n\n  .nr-dashboard-button button:hover {\n    filter: brightness(1.04);\n  }\n</style>\n\n<div class=\"dash-hero\">\n  <div>\n    <div class=\"dash-title\">智能衣物回收箱</div>\n    <div class=\"dash-sub\">把温湿度、满载率、空气质量、倾倒角度、门禁和告警状态收在一个更清爽的视图里。</div>\n    <div class=\"dash-tags\">\n      <span class=\"dash-tag\">ESP32_BOX_001</span>\n      <span class=\"dash-tag\">MQTT / Node-RED</span>\n      <span class=\"dash-tag\">实时监测</span>\n      <span class=\"dash-tag\">告警联动</span>\n    </div>\n    <div class=\"dash-kpis\">\n      <div class=\"dash-kpi\"><strong>在线监控</strong><span>设备状态和传感器数据同步展示</span></div>\n      <div class=\"dash-kpi\"><strong>统一控制</strong><span>前门、后门、风扇与告警按钮集中管理</span></div>\n    </div>\n  </div>\n  <div class=\"dash-device\" aria-hidden=\"true\">\n    <span class=\"dot one\"></span>\n    <span class=\"dot two\"></span>\n    <span class=\"dot three\"></span>\n    <span class=\"door front\"></span>\n    <span class=\"door back\"></span>\n  </div>\n</div>",
         "storeOutMessages": false,
         "fwdInMessages": false,
         "resendOnRefresh": true,
@@ -1916,27 +1894,6 @@
         "className": "",
         "x": 520,
         "y": 480,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "4722dddedfbeb6a1",
-        "type": "ui_template",
-        "z": "tab_dash",
-        "group": "",
-        "name": "专业仪表盘美化",
-        "order": 0,
-        "width": 0,
-        "height": 0,
-        "format": "<style>\n  :root {\n    --bg: #f3f7fb;\n    --panel: #ffffff;\n    --panel-2: #f8fafc;\n    --line: #e2e8f0;\n    --text: #172033;\n    --muted: #64748b;\n    --blue: #1677c8;\n    --blue2: #22a6e8;\n    --green: #18b875;\n    --orange: #f59e0b;\n    --red: #ef4444;\n    --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);\n  }\n\n  body,\n  md-content,\n  .nr-dashboard-theme md-content {\n    background: var(--bg) !important;\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\n    color: var(--text) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar {\n    height: 60px !important;\n    min-height: 60px !important;\n    background: linear-gradient(90deg, #145f8f, #1687c7) !important;\n    box-shadow: 0 4px 18px rgba(20, 95, 143, 0.22) !important;\n  }\n\n  .nr-dashboard-theme md-toolbar .md-toolbar-tools {\n    height: 60px !important;\n    padding-left: 28px !important;\n    font-size: 22px !important;\n    font-weight: 900 !important;\n  }\n\n  .nr-dashboard-theme md-tabs-wrapper {\n    background: #ffffff !important;\n    border-bottom: 1px solid var(--line) !important;\n  }\n\n  .nr-dashboard-theme md-tab-item {\n    color: var(--muted) !important;\n    font-weight: 800 !important;\n  }\n\n  .nr-dashboard-theme md-tab-item.md-active {\n    color: var(--blue) !important;\n  }\n\n  .nr-dashboard-theme md-ink-bar {\n    height: 3px !important;\n    background: var(--blue) !important;\n  }\n\n  .nr-dashboard-cardcontainer {\n    max-width: 1440px !important;\n    margin: 0 auto !important;\n    padding: 18px !important;\n  }\n\n  md-card,\n  .nr-dashboard-theme md-card {\n    border-radius: 8px !important;\n    background: var(--panel) !important;\n    border: 1px solid var(--line) !important;\n    box-shadow: var(--shadow) !important;\n    overflow: hidden !important;\n  }\n\n  .nr-dashboard-cardtitle {\n    color: var(--blue) !important;\n    font-size: 18px !important;\n    font-weight: 900 !important;\n    padding: 12px 16px 2px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge {\n    padding: 0 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge svg {\n    max-height: 132px !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-gauge text {\n    font-family: \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif !important;\n    font-weight: 800 !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button {\n    border-radius: 7px !important;\n    min-height: 42px !important;\n    font-size: 15px !important;\n    font-weight: 900 !important;\n    color: #fff !important;\n    background: linear-gradient(180deg, var(--blue2), var(--blue)) !important;\n    box-shadow: 0 8px 18px rgba(22, 135, 199, 0.22) !important;\n  }\n\n  .nr-dashboard-theme .nr-dashboard-button button:hover {\n    filter: brightness(1.05);\n  }\n\n  .nr-dashboard-theme .nr-dashboard-chart {\n    min-height: 330px !important;\n  }\n\n  .nr-dashboard-template {\n    font-size: 14px !important;\n    line-height: 1.65 !important;\n    color: var(--text) !important;\n  }\n\n  #proDashHero {\n    margin-bottom: 14px;\n    border-radius: 10px;\n    background: linear-gradient(135deg, #104766, #1687c7);\n    color: #fff;\n    padding: 20px 24px;\n    display: grid;\n    grid-template-columns: 1fr 160px;\n    align-items: center;\n    box-shadow: 0 12px 30px rgba(20, 95, 143, 0.22);\n  }\n\n  #proDashHero h1 {\n    margin: 0 0 8px;\n    font-size: 28px;\n    font-weight: 950;\n  }\n\n  #proDashHero p {\n    margin: 0;\n    color: rgba(255,255,255,.82);\n    font-weight: 700;\n  }\n\n  .hero-tags {\n    display: flex;\n    gap: 8px;\n    margin-top: 14px;\n    flex-wrap: wrap;\n  }\n\n  .hero-tags span {\n    padding: 6px 10px;\n    border-radius: 999px;\n    background: rgba(255,255,255,.16);\n    border: 1px solid rgba(255,255,255,.22);\n    font-size: 12px;\n    font-weight: 800;\n  }\n\n  .cube-scene {\n    height: 96px;\n    perspective: 520px;\n    display: grid;\n    place-items: center;\n  }\n\n  .cube {\n    width: 70px;\n    height: 70px;\n    transform-style: preserve-3d;\n    position: relative;\n    animation: spin 6s linear infinite;\n  }\n\n  .cube i {\n    position: absolute;\n    width: 70px;\n    height: 70px;\n    border-radius: 8px;\n    border: 2px solid rgba(255,255,255,.45);\n    background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(190,232,255,.5));\n  }\n\n  .cube i:nth-child(1) { transform: translateZ(35px); }\n  .cube i:nth-child(2) { transform: rotateY(180deg) translateZ(35px); }\n  .cube i:nth-child(3) { transform: rotateY(90deg) translateZ(35px); }\n  .cube i:nth-child(4) { transform: rotateY(-90deg) translateZ(35px); }\n  .cube i:nth-child(5) { transform: rotateX(90deg) translateZ(35px); }\n  .cube i:nth-child(6) { transform: rotateX(-90deg) translateZ(35px); }\n\n  @keyframes spin {\n    from { transform: rotateX(-18deg) rotateY(0deg); }\n    to { transform: rotateX(-18deg) rotateY(360deg); }\n  }\n\n  @media (max-width: 900px) {\n    #proDashHero {\n      grid-template-columns: 1fr;\n    }\n\n    .cube-scene {\n      display: none;\n    }\n  }\n</style>\n\n<script>\n(function () {\n  function addHero() {\n    if (document.getElementById(\"proDashHero\")) return;\n    var container = document.querySelector(\".nr-dashboard-cardcontainer\");\n    if (!container) return;\n\n    var hero = document.createElement(\"div\");\n    hero.id = \"proDashHero\";\n    hero.innerHTML = `\n      <div>\n        <h1>智能衣物回收箱管理系统</h1>\n        <p>实时监测、远程控制、告警联动、历史数据统一看板</p>\n        <div class=\"hero-tags\">\n          <span>ESP32</span>\n          <span>MQTT</span>\n          <span>SQLite</span>\n          <span>GPIO33 投放门</span>\n          <span>GPIO12 维护门</span>\n          <span>GPIO14 告警灯</span>\n        </div>\n      </div>\n      <div class=\"cube-scene\">\n        <div class=\"cube\">\n          <i></i><i></i><i></i><i></i><i></i><i></i>\n        </div>\n      </div>\n    `;\n    container.prepend(hero);\n  }\n\n  setTimeout(addHero, 300);\n  setTimeout(addHero, 1200);\n})();\n</script>",
-        "storeOutMessages": true,
-        "fwdInMessages": true,
-        "resendOnRefresh": true,
-        "templateScope": "local",
-        "className": "",
-        "x": 580,
-        "y": 560,
         "wires": [
             []
         ]
