@@ -87,7 +87,13 @@ function normalizeHistoryPayload(payload = {}) {
 
 function normalizeAlerts(payload = {}) {
 	const list = Array.isArray(payload) ? payload : payload.data || payload.records || payload.alerts || []
-	return Array.isArray(list) ? list.slice(0, 5) : []
+	return Array.isArray(list) ? list.slice(0, 5).map((item = {}) => ({
+		...item,
+		alertType: item.alertType || item.alert_type || item.type || '告警事件',
+		message: item.message || item.alertMsg || item.alert_msg || item.text || item.msg || '',
+		timestamp: item.timestamp || item.ts || item.time || item.createdAt || item.created_at || Date.now(),
+		is_ack: !!item.is_ack
+	})) : []
 }
 
 function normalizeCommands(payload = {}) {
@@ -320,6 +326,10 @@ function applyDemoModeSwitch(targetMode) {
 }
 
 async function queryBackend(config) {
+	const historyPromise = fetchBackendHistory(config)
+	const alertsPromise = fetchBackendAlerts(config)
+	const commandsPromise = fetchBackendCommands(config)
+	const healthPromise = fetchBackendHealth(config)
 	const statusResult = await fetchBackendStatus(config)
 	if (!statusResult.ok) {
 		return {
@@ -330,11 +340,17 @@ async function queryBackend(config) {
 		}
 	}
 	const [historyResult, alertsResult, commandsResult, healthResult] = await Promise.all([
-		fetchBackendHistory(config),
-		fetchBackendAlerts(config),
-		fetchBackendCommands(config),
-		fetchBackendHealth(config)
+		historyPromise,
+		alertsPromise,
+		commandsPromise,
+		healthPromise
 	])
+	const fallbackHealth = {
+		ok: true,
+		broker: 'MQTT 已连接',
+		service: '后端主链路已连通',
+		updatedAt: Date.now()
+	}
 	return {
 		ok: true,
 		channel: CHANNELS.backend,
@@ -342,7 +358,7 @@ async function queryBackend(config) {
 		history: historyResult.ok ? normalizeHistoryPayload(historyResult.data) : [],
 		alerts: alertsResult.ok ? normalizeAlerts(alertsResult.data) : [],
 		commands: commandsResult.ok ? normalizeCommands(commandsResult.data) : [],
-		health: healthResult.ok ? normalizeHealth(healthResult.data) : { ok: false, broker: '--', service: 'health unavailable', updatedAt: Date.now() }
+		health: healthResult.ok ? normalizeHealth(healthResult.data) : fallbackHealth
 	}
 }
 
@@ -356,7 +372,13 @@ async function queryLocal(config) {
 
 export async function resolveDeviceSnapshot(config) {
 	if (DEMO_MODE_ENABLED) return getDemoSnapshot(config)
-	if (config.mode === MODES.backend) return queryBackend(config)
+	if (config.mode === MODES.backend) {
+		const backendResult = await queryBackend(config)
+		if (backendResult.ok) return backendResult
+		const localResult = await queryLocal(config)
+		if (localResult.ok) return { ...localResult, fallbackFrom: CHANNELS.backend, fallbackMessage: ERROR_MESSAGES.backendOffline }
+		return backendResult
+	}
 	if (config.mode === MODES.localAp) return queryLocal(config)
 	const backendResult = await queryBackend(config)
 	if (backendResult.ok) return backendResult
@@ -380,7 +402,18 @@ export async function sendControl(config, activeChannel, action) {
 		return { ok: true, data: { code: 200, msg: `演示模式：${action} 已处理` } }
 	}
 	if (config.mode === MODES.localAp || activeChannel === CHANNELS.localAp) return sendLocalControl(config, action)
-	return sendBackendControl(config, action)
+	if (config.mode === MODES.backend) {
+		const backendResult = await sendBackendControl(config, action)
+		if (backendResult.ok) return backendResult
+		const localResult = await sendLocalControl(config, action)
+		if (localResult.ok) return localResult
+		return backendResult
+	}
+	const backendResult = await sendBackendControl(config, action)
+	if (backendResult.ok) return backendResult
+	const localResult = await sendLocalControl(config, action)
+	if (localResult.ok) return localResult
+	return backendResult
 }
 
 export function sendLocalUnlock(config) {

@@ -24,7 +24,7 @@
         "id": "mqtt_broker_local",
         "type": "mqtt-broker",
         "name": "本地MQTT",
-        "broker": "127.0.0.1:1883",
+        "broker": "127.0.0.1",
         "port": "1883",
         "clientid": "node-red-box",
         "autoConnect": true,
@@ -209,8 +209,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 80,
+        "x": 140,
+        "y": 440,
         "wires": [
             [
                 "fn_init_schema"
@@ -228,8 +228,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 80,
+        "x": 370,
+        "y": 440,
         "wires": [
             [
                 "db_core"
@@ -253,8 +253,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 130,
+        "x": 140,
+        "y": 490,
         "wires": [
             [
                 "fn_cleanup"
@@ -272,8 +272,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 130,
+        "x": 370,
+        "y": 490,
         "wires": [
             [
                 "db_core"
@@ -328,7 +328,7 @@
         "type": "function",
         "z": "tab_core",
         "name": "遥测处理",
-        "func": "const raw = msg.payload || {};\nconst prev = global.get('latestTelemetry') || {};\nconst now = Date.now();\n\nfunction toNumber(...vals) {\n  for (const v of vals) {\n    if (v === null || v === undefined || v === '') continue;\n    const n = Number(v);\n    if (Number.isFinite(n)) return n;\n  }\n  return undefined;\n}\n\nfunction toBool(...vals) {\n  for (const v of vals) {\n    if (v === null || v === undefined || v === '') continue;\n    if (typeof v === 'boolean') return v;\n    if (typeof v === 'number') return v !== 0;\n    const s = String(v).trim().toLowerCase();\n    if (['1', 'true', 'on', 'open', 'opened', 'yes', 'y'].includes(s)) return true;\n    if (['0', 'false', 'off', 'close', 'closed', 'no', 'n'].includes(s)) return false;\n  }\n  return undefined;\n}\n\nconst deviceId = String(raw.deviceId || raw.device_id || prev.deviceId || 'ESP32_BOX_001');\nconst front = toBool(raw.frontLight, raw.frontDoor, raw.front_door, prev.frontDoor, prev.frontLight);\nconst back = toBool(raw.backLight, raw.backDoor, raw.back_door, prev.backDoor, prev.backLight);\nconst temperature = toNumber(raw.temperature, raw.temp, prev.temperature);\nconst humidity = toNumber(raw.humidity, raw.hum, prev.humidity);\nconst capacity = toNumber(raw.capacity, raw.fullness, prev.capacity);\nconst airQuality = toNumber(raw.airQuality, raw.air_quality, raw.mq135, prev.airQuality);\nconst tiltAngle = toNumber(raw.tiltAngle, raw.tilt_angle, prev.tiltAngle);\nconst humanDetect = toBool(raw.humanDetect, raw.human_detect, raw.pir, prev.humanDetect);\nconst fanStatus = toBool(raw.fanStatus, raw.fan_status, prev.fanStatus);\nconst boxTiltAlert = toBool(raw.boxTiltAlert, raw.box_tilt_alert, prev.boxTiltAlert) || (Number.isFinite(tiltAngle) ? tiltAngle >= 25 : !!prev.boxTiltAlert);\nconst sensorFaults = Array.isArray(raw.sensorFaults) ? raw.sensorFaults : (Array.isArray(raw.sensor_faults) ? raw.sensor_faults : (Array.isArray(prev.sensorFaults) ? prev.sensorFaults : []));\nconst buzzerMode = raw.buzzerMode || raw.buzzer_mode || prev.buzzerMode || 'off';\nconst netMode = raw.netMode || raw.net_mode || prev.netMode || 'STA';\nconst wifiSsid = raw.wifiSsid || raw.wifi_ssid || prev.wifiSsid || '';\nconst mqttServer = raw.mqttServer || raw.mqtt_server || prev.mqttServer || '';\nconst mqttPort = toNumber(raw.mqttPort, raw.mqtt_port, prev.mqttPort, 1883) || 1883;\nconst staIp = raw.staIp || raw.sta_ip || prev.staIp || '';\nconst systemState = raw.systemState || prev.systemState || 'STANDBY';\nconst deviceTsRaw = toNumber(raw.timestamp, raw.ts, raw.deviceTs);\nconst deviceTimestampMs = Number.isFinite(deviceTsRaw) ? (deviceTsRaw < 1e12 ? deviceTsRaw * 1000 : deviceTsRaw) : null;\n\nconst data = {\n  deviceId,\n  temperature: Number.isFinite(temperature) ? temperature : Number(prev.temperature || 0),\n  humidity: Number.isFinite(humidity) ? humidity : Number(prev.humidity || 0),\n  capacity: Number.isFinite(capacity) ? capacity : Number(prev.capacity || 0),\n  airQuality: Number.isFinite(airQuality) ? airQuality : Number(prev.airQuality || 0),\n  humanDetect: !!(typeof humanDetect === 'boolean' ? humanDetect : prev.humanDetect),\n  boxTiltAlert: !!boxTiltAlert,\n  fanStatus: !!(typeof fanStatus === 'boolean' ? fanStatus : prev.fanStatus),\n  frontLight: typeof front === 'boolean' ? front : !!prev.frontLight,\n  backLight: typeof back === 'boolean' ? back : !!prev.backLight,\n  frontDoor: typeof front === 'boolean' ? front : !!prev.frontDoor,\n  backDoor: typeof back === 'boolean' ? back : !!prev.backDoor,\n  tiltAngle: Number.isFinite(tiltAngle) ? tiltAngle : Number(prev.tiltAngle || 0),\n  sensorFaults,\n  buzzerMode,\n  netMode,\n  wifiSsid,\n  mqttServer,\n  mqttPort,\n  staIp,\n  systemState,\n  deviceTimestampMs,\n  lastSeen: now,\n  mqttOnline: true\n};\n\nglobal.set('latestTelemetry', data);\nglobal.set('latestTelemetryRaw', raw);\n\nconst status = [\n  '设备: ' + data.deviceId,\n  '在线: 是',\n  '温度: ' + data.temperature.toFixed(1) + ' C',\n  '湿度: ' + data.humidity.toFixed(1) + ' %',\n  '满载率: ' + data.capacity.toFixed(1) + ' %',\n  '空气质量: ' + data.airQuality.toFixed(0),\n  '倾角: ' + data.tiltAngle.toFixed(1) + ' deg',\n  '倾斜告警: ' + (data.boxTiltAlert ? '是' : '否'),\n  '风扇: ' + (data.fanStatus ? '开' : '关'),\n  '前门: ' + (data.frontDoor ? '开' : '关'),\n  '后门: ' + (data.backDoor ? '开' : '关'),\n  '故障: ' + (data.sensorFaults.length ? data.sensorFaults.join(',') : '无')\n].join('\\n');\n\nreturn [\n  { payload: data.temperature, topic: 'temperature' },\n  { payload: data.humidity, topic: 'humidity' },\n  { payload: data.capacity, topic: 'capacity' },\n  { payload: data.airQuality, topic: 'airQuality' },\n  { payload: data.tiltAngle, topic: 'tiltAngle' },\n  { payload: status },\n  { topic: 'INSERT INTO telemetry (device_id,ts,temperature,humidity,capacity,air_quality,human_detect,fan_status,front_door,back_door,tilt_angle,sensor_faults,buzzer_mode,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12,$p13,$p14)', payload: [data.deviceId, now, data.temperature, data.humidity, data.capacity, data.airQuality, data.humanDetect ? 1 : 0, data.fanStatus ? 1 : 0, data.frontDoor ? 1 : 0, data.backDoor ? 1 : 0, data.tiltAngle, JSON.stringify(data.sensorFaults), data.buzzerMode, JSON.stringify(raw)] },\n  { topic: 'INSERT INTO devices (device_id,device_name,online,last_seen,mqtt_online) VALUES ($p1,$p2,$p3,$p4,$p5) ON CONFLICT(device_id) DO UPDATE SET device_name=excluded.device_name,online=excluded.online,last_seen=excluded.last_seen,mqtt_online=excluded.mqtt_online', payload: [data.deviceId, 'ESP32_BOX_001', 1, now, 1] }\n];",
+        "func": "const raw = msg.payload || {};\nconst prev = global.get('latestTelemetry') || {};\nconst now = Date.now();\n\nfunction toNumber(...vals) {\n  for (const v of vals) {\n    if (v === null || v === undefined || v === '') continue;\n    const n = Number(v);\n    if (Number.isFinite(n)) return n;\n  }\n  return undefined;\n}\n\nfunction toBool(...vals) {\n  for (const v of vals) {\n    if (v === null || v === undefined || v === '') continue;\n    if (typeof v === 'boolean') return v;\n    if (typeof v === 'number') return v !== 0;\n    const s = String(v).trim().toLowerCase();\n    if (['1', 'true', 'on', 'open', 'opened', 'yes', 'y'].includes(s)) return true;\n    if (['0', 'false', 'off', 'close', 'closed', 'no', 'n'].includes(s)) return false;\n  }\n  return undefined;\n}\n\nconst deviceId = String(raw.deviceId || raw.device_id || prev.deviceId || 'ESP32_BOX_001');\nconst front = toBool(raw.frontLight, raw.frontDoor, raw.front_door, prev.frontDoor, prev.frontLight);\nconst back = toBool(raw.backLight, raw.backDoor, raw.back_door, prev.backDoor, prev.backLight);\nconst temperature = toNumber(raw.temperature, raw.temp, prev.temperature);\nconst humidity = toNumber(raw.humidity, raw.hum, prev.humidity);\nconst capacity = toNumber(raw.capacity, raw.fullness, prev.capacity);\nconst airQualityRaw = toNumber(raw.airQualityRaw, raw.air_quality_raw, raw.mq135Raw, raw.mq135_raw, prev.airQualityRaw, raw.airQuality, raw.air_quality, raw.mq135);\nconst airQuality = toNumber(raw.airQuality, raw.air_quality, raw.mq135, prev.airQuality);\nconst tiltAngle = toNumber(raw.tiltAngle, raw.tilt_angle, prev.tiltAngle);\nconst humanDetect = toBool(raw.humanDetect, raw.human_detect, raw.pir, prev.humanDetect);\nconst fanStatus = toBool(raw.fanStatus, raw.fan_status, prev.fanStatus);\nconst boxTiltAlert = toBool(raw.boxTiltAlert, raw.box_tilt_alert, prev.boxTiltAlert) || (Number.isFinite(tiltAngle) ? tiltAngle >= 25 : !!prev.boxTiltAlert);\nconst sensorFaults = Array.isArray(raw.sensorFaults) ? raw.sensorFaults : (Array.isArray(raw.sensor_faults) ? raw.sensor_faults : (Array.isArray(prev.sensorFaults) ? prev.sensorFaults : []));\nconst buzzerMode = raw.buzzerMode || raw.buzzer_mode || prev.buzzerMode || 'off';\nconst netMode = raw.netMode || raw.net_mode || prev.netMode || 'STA';\nconst wifiSsid = raw.wifiSsid || raw.wifi_ssid || prev.wifiSsid || '';\nconst mqttServer = raw.mqttServer || raw.mqtt_server || prev.mqttServer || '';\nconst mqttPort = toNumber(raw.mqttPort, raw.mqtt_port, prev.mqttPort, 1883) || 1883;\nconst staIp = raw.staIp || raw.sta_ip || prev.staIp || '';\nconst systemState = raw.systemState || prev.systemState || 'STANDBY';\nconst deviceTsRaw = toNumber(raw.timestamp, raw.ts, raw.deviceTs);\nconst deviceTimestampMs = Number.isFinite(deviceTsRaw) ? (deviceTsRaw < 1e12 ? deviceTsRaw * 1000 : deviceTsRaw) : null;\n\nconst data = {\n  deviceId,\n  temperature: Number.isFinite(temperature) ? temperature : Number(prev.temperature || 0),\n  humidity: Number.isFinite(humidity) ? humidity : Number(prev.humidity || 0),\n  capacity: Number.isFinite(capacity) ? capacity : Number(prev.capacity || 0),\n  airQuality: Number.isFinite(airQuality) ? airQuality : Number(prev.airQuality || 0),\n  airQualityRaw: Number.isFinite(airQualityRaw) ? airQualityRaw : Number(prev.airQualityRaw || 0),\n  humanDetect: !!(typeof humanDetect === 'boolean' ? humanDetect : prev.humanDetect),\n  boxTiltAlert: !!boxTiltAlert,\n  fanStatus: !!(typeof fanStatus === 'boolean' ? fanStatus : prev.fanStatus),\n  frontLight: typeof front === 'boolean' ? front : !!prev.frontLight,\n  backLight: typeof back === 'boolean' ? back : !!prev.backLight,\n  frontDoor: typeof front === 'boolean' ? front : !!prev.frontDoor,\n  backDoor: typeof back === 'boolean' ? back : !!prev.backDoor,\n  tiltAngle: Number.isFinite(tiltAngle) ? tiltAngle : Number(prev.tiltAngle || 0),\n  sensorFaults,\n  buzzerMode,\n  netMode,\n  wifiSsid,\n  mqttServer,\n  mqttPort,\n  staIp,\n  systemState,\n  deviceTimestampMs,\n  lastSeen: now,\n  mqttOnline: true\n};\n\nglobal.set('latestTelemetry', data);\nglobal.set('latestTelemetryRaw', raw);\n\nconst status = [\n  '设备: ' + data.deviceId,\n  '在线: 是',\n  '温度: ' + data.temperature.toFixed(1) + ' C',\n  '湿度: ' + data.humidity.toFixed(1) + ' %',\n  '满载率: ' + data.capacity.toFixed(1) + ' %',\n  '空气质量: ' + data.airQuality.toFixed(0),\n  '倾角: ' + data.tiltAngle.toFixed(1) + ' deg',\n  '倾斜告警: ' + (data.boxTiltAlert ? '是' : '否'),\n  '风扇: ' + (data.fanStatus ? '开' : '关'),\n  '前门: ' + (data.frontDoor ? '开' : '关'),\n  '后门: ' + (data.backDoor ? '开' : '关'),\n  '故障: ' + (data.sensorFaults.length ? data.sensorFaults.join(',') : '无')\n].join('\\n');\n\nreturn [\n  { payload: data.temperature, topic: 'temperature' },\n  { payload: data.humidity, topic: 'humidity' },\n  { payload: data.capacity, topic: 'capacity' },\n  { payload: data.airQuality, topic: 'airQuality' },\n  { payload: data.tiltAngle, topic: 'tiltAngle' },\n  { payload: status },\n  { topic: 'INSERT INTO telemetry (device_id,ts,temperature,humidity,capacity,air_quality,human_detect,fan_status,front_door,back_door,tilt_angle,sensor_faults,buzzer_mode,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12,$p13,$p14)', payload: [data.deviceId, now, data.temperature, data.humidity, data.capacity, data.airQuality, data.humanDetect ? 1 : 0, data.fanStatus ? 1 : 0, data.frontDoor ? 1 : 0, data.backDoor ? 1 : 0, data.tiltAngle, JSON.stringify(data.sensorFaults), data.buzzerMode, JSON.stringify(raw)] },\n  { topic: 'INSERT INTO devices (device_id,device_name,online,last_seen,mqtt_online) VALUES ($p1,$p2,$p3,$p4,$p5) ON CONFLICT(device_id) DO UPDATE SET device_name=excluded.device_name,online=excluded.online,last_seen=excluded.last_seen,mqtt_online=excluded.mqtt_online', payload: [data.deviceId, 'ESP32_BOX_001', 1, now, 1] }\n];",
         "outputs": 9,
         "timeout": "",
         "noerr": 0,
@@ -362,12 +362,36 @@
                 "debug_telemetry"
             ],
             [
-                "db_core"
+                "db_core",
+                "fn_telemetry_sync"
             ],
             [
                 "db_core"
             ],
             []
+        ]
+    },
+    {
+        "id": "fn_telemetry_sync",
+        "type": "function",
+        "z": "tab_core",
+        "name": "Telemetry Sync",
+        "func": "const d = global.get('latestTelemetry') || {};\nconst ts = Number(d.lastSeen || Date.now());\nconst deviceId = d.deviceId || 'ESP32_BOX_001';\n\nreturn [\n  { topic: 'INSERT INTO device_latest_status (device_id,capacity,temperature,humidity,air_quality,human_detect,box_tilt_alert,fan_status,front_door,back_door,net_mode,updated_at) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12) ON CONFLICT(device_id) DO UPDATE SET capacity=excluded.capacity,temperature=excluded.temperature,humidity=excluded.humidity,air_quality=excluded.air_quality,human_detect=excluded.human_detect,box_tilt_alert=excluded.box_tilt_alert,fan_status=excluded.fan_status,front_door=excluded.front_door,back_door=excluded.back_door,net_mode=excluded.net_mode,updated_at=excluded.updated_at', payload: [deviceId, Number(d.capacity || 0), Number(d.temperature || 0), Number(d.humidity || 0), Number(d.airQuality || 0), d.humanDetect ? 1 : 0, d.boxTiltAlert ? 1 : 0, d.fanStatus ? 1 : 0, d.frontDoor ? 1 : 0, d.backDoor ? 1 : 0, d.netMode || 'STA', ts] },\n  { topic: 'INSERT INTO device_history (device_id,timestamp,capacity,temperature,humidity,air_quality,human_detect,box_tilt_alert,fan_status,front_door,back_door,net_mode) VALUES ($p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12)', payload: [deviceId, new Date(ts).toISOString(), Number(d.capacity || 0), Number(d.temperature || 0), Number(d.humidity || 0), Number(d.airQuality || 0), d.humanDetect ? 1 : 0, d.boxTiltAlert ? 1 : 0, d.fanStatus ? 1 : 0, d.frontDoor ? 1 : 0, d.backDoor ? 1 : 0, d.netMode || 'STA'] }\n];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 400,
+        "wires": [
+            [
+                "db_core"
+            ],
+            [
+                "db_core"
+            ]
         ]
     },
     {
@@ -383,8 +407,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 140,
-        "y": 290,
+        "x": 100,
+        "y": 600,
         "wires": [
             [
                 "json_alert"
@@ -399,8 +423,8 @@
         "property": "payload",
         "action": "",
         "pretty": false,
-        "x": 350,
-        "y": 290,
+        "x": 310,
+        "y": 600,
         "wires": [
             [
                 "fn_alert"
@@ -412,19 +436,40 @@
         "type": "function",
         "z": "tab_core",
         "name": "告警处理",
-        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst type = d.alertType || d.type || 'ALERT';\nconst text = d.alertMsg || d.message || d.msg || JSON.stringify(d);\nconst suppressUntil = global.get('alarmSuppressUntil') || 0;\nconst suppressed = Date.now() < suppressUntil && /alarm|tilt|door|buzzer|fire|smoke/i.test(type + ' ' + text);\n\nconst list = global.get('alertList') || [];\nlist.unshift({ id: ts, deviceId: d.deviceId || d.device_id || 'ESP32_BOX_001', type: type, text: text, ts: ts, suppressed: suppressed });\nglobal.set('alertList', list.slice(0, 20));\n\nconst view = list.slice(0, 20).map(function (i) {\n    return (i.suppressed ? '[抑制] ' : '') + '[' + new Date(i.ts).toLocaleString('zh-CN', { hour12: false }) + '] ' + i.type + ' - ' + i.text;\n}).join('\\n');\n\nreturn [\n    { payload: view },\n    { topic: 'INSERT INTO alerts (device_id,ts,alert_type,alert_msg,is_ack) VALUES ($p1,$p2,$p3,$p4,$p5)', payload: [d.deviceId || d.device_id || 'ESP32_BOX_001', ts, type, text, suppressed ? 1 : 0] }\n];",
+        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst type = d.alertType || d.type || 'ALERT';\nconst text = d.alertMsg || d.message || d.msg || JSON.stringify(d);\nconst suppressUntil = global.get('alarmSuppressUntil') || 0;\nconst suppressed = Date.now() < suppressUntil && /alarm|tilt|door|buzzer|fire|smoke/i.test(type + ' ' + text);\n\nconst record = { deviceId: d.deviceId || d.device_id || 'ESP32_BOX_001', type: type, text: text, ts: ts, suppressed: suppressed };\nconst list = global.get('alertList') || [];\nlist.unshift(Object.assign({ id: ts }, record));\nglobal.set('alertList', list.slice(0, 20));\nglobal.set('latestAlertRecord', record);\n\nconst view = list.slice(0, 20).map(function (i) {\n    return (i.suppressed ? '[???] ' : '') + '[' + new Date(i.ts).toLocaleString('zh-CN', { hour12: false }) + '] ' + i.type + ' - ' + i.text;\n}).join('\\n');\n\nreturn [\n    { payload: view },\n    { topic: 'INSERT INTO alerts (device_id,ts,alert_type,alert_msg,is_ack) VALUES ($p1,$p2,$p3,$p4,$p5)', payload: [record.deviceId, ts, type, text, suppressed ? 1 : 0] }\n];",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
-        "y": 320,
+        "x": 520,
+        "y": 600,
         "wires": [
             [
                 "966142f757d7bc76"
             ],
+            [
+                "db_core",
+                "fn_alert_sync"
+            ]
+        ]
+    },
+    {
+        "id": "fn_alert_sync",
+        "type": "function",
+        "z": "tab_core",
+        "name": "Alert Sync",
+        "func": "const a = global.get('latestAlertRecord');\nif (!a) return null;\nreturn [{ topic: 'INSERT INTO device_alerts (device_id,alert_type,alert_msg,alert_level,is_ack,created_at) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [a.deviceId || 'ESP32_BOX_001', a.type || 'ALERT', a.text || '', a.suppressed ? 'info' : 'warning', a.suppressed ? 1 : 0, new Date(a.ts || Date.now()).toISOString()] }];",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 540,
+        "wires": [
             [
                 "db_core"
             ]
@@ -443,8 +488,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 140,
-        "y": 350,
+        "x": 100,
+        "y": 660,
         "wires": [
             [
                 "json_ack"
@@ -459,8 +504,8 @@
         "property": "payload",
         "action": "",
         "pretty": false,
-        "x": 350,
-        "y": 350,
+        "x": 310,
+        "y": 660,
         "wires": [
             [
                 "fn_ack"
@@ -472,14 +517,14 @@
         "type": "function",
         "z": "tab_core",
         "name": "应答记录",
-        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst action = d.action || d.cmd || d.command || 'ACK';\nconst status = d.status || ((d.success === false || d.ok === false) ? 'failed' : 'ack');\nreturn [{ topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [d.deviceId || d.device_id || 'ESP32_BOX_001', ts, action, status, 'mqtt_ack', JSON.stringify(d)] }];",
+        "func": "const d = msg.payload || {};\nconst ts = Date.now();\nconst action = d.action || d.cmd || d.command || 'ACK';\nconst status = d.status || ((d.success === false || d.ok === false) ? 'failed' : 'ack');\nglobal.set('latestCommandRecord', { deviceId: d.deviceId || d.device_id || 'ESP32_BOX_001', action: action, status: status, source: 'mqtt_ack', raw: d, ts: ts });\nreturn [{ topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [d.deviceId || d.device_id || 'ESP32_BOX_001', ts, action, status, 'mqtt_ack', JSON.stringify(d)] }];",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
-        "y": 400,
+        "x": 520,
+        "y": 660,
         "wires": [
             [
                 "db_core"
@@ -503,8 +548,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 410,
+        "x": 110,
+        "y": 720,
         "wires": [
             [
                 "fn_refresh"
@@ -523,8 +568,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 410,
+        "x": 300,
+        "y": 720,
         "wires": [
             [
                 "cb630220e2a2fd7c"
@@ -538,8 +583,8 @@
         "name": "错误捕获",
         "scope": null,
         "uncaught": false,
-        "x": 150,
-        "y": 520,
+        "x": 100,
+        "y": 800,
         "wires": [
             [
                 "debug_error"
@@ -559,8 +604,8 @@
             "mqtt_out_config",
             "db_exec"
         ],
-        "x": 170,
-        "y": 570,
+        "x": 120,
+        "y": 850,
         "wires": [
             [
                 "fn_status_log"
@@ -578,8 +623,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 570,
+        "x": 340,
+        "y": 850,
         "wires": [
             [
                 "debug_status"
@@ -599,8 +644,8 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 400,
-        "y": 520,
+        "x": 350,
+        "y": 800,
         "wires": []
     },
     {
@@ -616,8 +661,8 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 610,
-        "y": 570,
+        "x": 560,
+        "y": 850,
         "wires": []
     },
     {
@@ -633,8 +678,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 920,
-        "y": 240,
+        "x": 1240,
+        "y": 380,
         "wires": []
     },
     {
@@ -645,8 +690,8 @@
         "sqlquery": "msg.topic",
         "sql": "",
         "name": "SQLite执行",
-        "x": 850,
-        "y": 100,
+        "x": 950,
+        "y": 480,
         "wires": [
             [
                 "debug_db_core"
@@ -666,8 +711,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1030,
-        "y": 100,
+        "x": 1130,
+        "y": 480,
         "wires": []
     },
     {
@@ -679,7 +724,7 @@
         "order": 1,
         "width": "4",
         "height": 4,
-        "gtype": "gage",
+        "gtype": "donut",
         "title": "温度",
         "label": "°C",
         "format": "{{value}}",
@@ -694,8 +739,8 @@
         "seg2": "35",
         "diff": false,
         "className": "",
-        "x": 970,
-        "y": 540,
+        "x": 1230,
+        "y": 180,
         "wires": []
     },
     {
@@ -707,7 +752,7 @@
         "order": 2,
         "width": "4",
         "height": 4,
-        "gtype": "gage",
+        "gtype": "donut",
         "title": "湿度",
         "label": "%",
         "format": "{{value}}",
@@ -722,8 +767,8 @@
         "seg2": "85",
         "diff": false,
         "className": "",
-        "x": 950,
-        "y": 360,
+        "x": 1230,
+        "y": 220,
         "wires": []
     },
     {
@@ -735,7 +780,7 @@
         "order": 3,
         "width": "4",
         "height": 4,
-        "gtype": "gage",
+        "gtype": "donut",
         "title": "满载率",
         "label": "%",
         "format": "{{value}}",
@@ -750,8 +795,8 @@
         "seg2": "90",
         "diff": false,
         "className": "",
-        "x": 750,
-        "y": 460,
+        "x": 1230,
+        "y": 260,
         "wires": []
     },
     {
@@ -763,7 +808,7 @@
         "order": 4,
         "width": "4",
         "height": 4,
-        "gtype": "gage",
+        "gtype": "donut",
         "title": "空气质量",
         "label": "ppm",
         "format": "{{value}}",
@@ -778,8 +823,8 @@
         "seg2": "700",
         "diff": false,
         "className": "",
-        "x": 860,
-        "y": 420,
+        "x": 1240,
+        "y": 300,
         "wires": []
     },
     {
@@ -791,7 +836,7 @@
         "order": 5,
         "width": "4",
         "height": 4,
-        "gtype": "gage",
+        "gtype": "donut",
         "title": "倾斜角",
         "label": "°",
         "format": "{{value}}",
@@ -806,8 +851,8 @@
         "seg2": "45",
         "diff": false,
         "className": "",
-        "x": 1030,
-        "y": 440,
+        "x": 1230,
+        "y": 340,
         "wires": []
     },
     {
@@ -848,10 +893,91 @@
         "outputs": 1,
         "useDifferentColor": false,
         "className": "",
-        "x": 1040,
-        "y": 640,
+        "x": 1240,
+        "y": 440,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "inj_history_chart",
+        "type": "inject",
+        "z": "tab_core",
+        "name": "加载历史图表",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 120,
+        "y": 1100,
+        "wires": [
+            [
+                "fn_history_chart_query"
+            ]
+        ]
+    },
+    {
+        "id": "fn_history_chart_query",
+        "type": "function",
+        "z": "tab_core",
+        "name": "查询历史图表",
+        "func": "msg.topic = \"SELECT * FROM telemetry WHERE device_id = $p1 ORDER BY ts ASC LIMIT 24\";\nmsg.payload = [\"ESP32_BOX_001\"];\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 1100,
+        "wires": [
+            [
+                "db_history_chart"
+            ]
+        ]
+    },
+    {
+        "id": "db_history_chart",
+        "type": "sqlite",
+        "z": "tab_core",
+        "mydb": "sqlitedb_local",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "历史图表数据库",
+        "x": 510,
+        "y": 1100,
+        "wires": [
+            [
+                "fn_history_chart_format"
+            ]
+        ]
+    },
+    {
+        "id": "fn_history_chart_format",
+        "type": "function",
+        "z": "tab_core",
+        "name": "历史图表格式化",
+        "func": "const rows = Array.isArray(msg.payload) ? msg.payload : [];\nconst out = [];\nrows.forEach((row) => {\n  const ts = Number(row.ts || Date.now());\n  const items = [\n    ['temperature', Number(row.temperature || 0)],\n    ['humidity', Number(row.humidity || 0)],\n    ['capacity', Number(row.capacity || 0)],\n    ['airQuality', Number(row.air_quality || 0)],\n    ['tiltAngle', Number(row.tilt_angle || 0)]\n  ];\n  items.forEach(([topic, payload]) => {\n    out.push({ topic, payload, timestamp: ts });\n  });\n});\nreturn out;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 1100,
+        "wires": [
+            [
+                "375c6dd203d4e479"
+            ]
         ]
     },
     {
@@ -868,8 +994,8 @@
         "fwdInMessages": true,
         "resendOnRefresh": true,
         "templateScope": "local",
-        "x": 580,
-        "y": 440,
+        "x": 520,
+        "y": 720,
         "wires": [
             []
         ]
@@ -888,10 +1014,354 @@
         "fwdInMessages": true,
         "resendOnRefresh": true,
         "templateScope": "local",
-        "x": 920,
-        "y": 320,
+        "x": 740,
+        "y": 600,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "bdbbfdc29b82d9d0",
+        "type": "inject",
+        "z": "tab_core",
+        "name": "device_latest_status",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 960,
+        "wires": [
+            [
+                "9c088be153da5a05"
+            ]
+        ]
+    },
+    {
+        "id": "9c088be153da5a05",
+        "type": "function",
+        "z": "tab_core",
+        "name": "function 1",
+        "func": "msg.topic = \"SELECT * FROM device_latest_status ORDER BY updated_at DESC LIMIT 20\";\nmsg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 960,
+        "wires": [
+            [
+                "3d2d189ef0e8557e"
+            ]
+        ]
+    },
+    {
+        "id": "3d2d189ef0e8557e",
+        "type": "sqlite",
+        "z": "tab_core",
+        "mydb": "sqlitedb_local",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "",
+        "x": 530,
+        "y": 960,
+        "wires": [
+            [
+                "a166bb36354cfcef"
+            ]
+        ]
+    },
+    {
+        "id": "a166bb36354cfcef",
+        "type": "debug",
+        "z": "tab_core",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 700,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "02606d54232208fa",
+        "type": "inject",
+        "z": "tab_core",
+        "name": "device_history",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 1020,
+        "wires": [
+            [
+                "6bb09f300d1f8574"
+            ]
+        ]
+    },
+    {
+        "id": "6bb09f300d1f8574",
+        "type": "function",
+        "z": "tab_core",
+        "name": "function 2",
+        "func": "msg.topic = \"SELECT * FROM device_history ORDER BY id DESC LIMIT 20\";\nmsg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 1020,
+        "wires": [
+            [
+                "640346fc872467f8"
+            ]
+        ]
+    },
+    {
+        "id": "640346fc872467f8",
+        "type": "sqlite",
+        "z": "tab_core",
+        "mydb": "sqlitedb_local",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "",
+        "x": 530,
+        "y": 1020,
+        "wires": [
+            [
+                "c2dffd6d30e5b23a"
+            ]
+        ]
+    },
+    {
+        "id": "c2dffd6d30e5b23a",
+        "type": "debug",
+        "z": "tab_core",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 700,
+        "y": 1020,
+        "wires": []
+    },
+    {
+        "id": "6660fb3e7bccc355",
+        "type": "inject",
+        "z": "tab_core",
+        "name": "device_alerts",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 1200,
+        "wires": [
+            [
+                "cb2be54c7d2106d1"
+            ]
+        ]
+    },
+    {
+        "id": "cb2be54c7d2106d1",
+        "type": "function",
+        "z": "tab_core",
+        "name": "function 3",
+        "func": "msg.topic = \"SELECT * FROM device_alerts ORDER BY id DESC LIMIT 20\";\nmsg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 1200,
+        "wires": [
+            [
+                "4250294f2ce1c060"
+            ]
+        ]
+    },
+    {
+        "id": "4250294f2ce1c060",
+        "type": "sqlite",
+        "z": "tab_core",
+        "mydb": "sqlitedb_local",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "",
+        "x": 530,
+        "y": 1200,
+        "wires": [
+            [
+                "3f499dc29b4d0ded"
+            ]
+        ]
+    },
+    {
+        "id": "3f499dc29b4d0ded",
+        "type": "debug",
+        "z": "tab_core",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 700,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "02ae34c466d752ea",
+        "type": "inject",
+        "z": "tab_core",
+        "name": "device_commands",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 1260,
+        "wires": [
+            [
+                "16b66ac46869e25b"
+            ]
+        ]
+    },
+    {
+        "id": "16b66ac46869e25b",
+        "type": "function",
+        "z": "tab_core",
+        "name": "function 4",
+        "func": "msg.topic = \"SELECT * FROM device_commands ORDER BY id DESC LIMIT 20\";\nmsg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 1260,
+        "wires": [
+            [
+                "934d11e9f76b63cb"
+            ]
+        ]
+    },
+    {
+        "id": "934d11e9f76b63cb",
+        "type": "sqlite",
+        "z": "tab_core",
+        "mydb": "sqlitedb_local",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "",
+        "x": 530,
+        "y": 1260,
+        "wires": [
+            [
+                "73dfc5a5142b6e29"
+            ]
+        ]
+    },
+    {
+        "id": "73dfc5a5142b6e29",
+        "type": "debug",
+        "z": "tab_core",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 700,
+        "y": 1260,
+        "wires": []
+    },
+    {
+        "id": "fn_command_sync",
+        "type": "function",
+        "z": "tab_api",
+        "name": "Command Sync",
+        "func": "const c = global.get('latestCommandRecord');\nif (!c) return null;\nconst createdAt = new Date(c.ts || Date.now()).toISOString();\nconst executedAt = (c.status === 'ack' || c.status === 'success' || c.status === 'done') ? createdAt : null;\nreturn [{ topic: 'INSERT INTO device_commands (device_id,action,source,result,created_at,executed_at) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [c.deviceId || 'ESP32_BOX_001', c.action || 'UNKNOWN', c.source || 'unknown', c.status || 'sent', createdAt, executedAt] }];",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 440,
+        "wires": [
+            [
+                "db_exec"
+            ]
         ]
     },
     {
@@ -982,14 +1452,14 @@
         "type": "function",
         "z": "tab_api",
         "name": "历史返回",
-        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];rows.reverse();msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{timeline:rows.map(r=>new Date(r.ts).toLocaleTimeString('zh-CN',{hour12:false})),tempData:rows.map(r=>Number(r.temperature||0)),humidityData:rows.map(r=>Number(r.humidity||0)),airData:rows.map(r=>Number(r.air_quality||0)),capacityData:rows.map(r=>Number(r.capacity||0)),tiltData:rows.map(r=>Number(r.tilt_angle||0)),fanData:rows.map(r=>Number(r.fan_status||0)),frontData:rows.map(r=>Number(r.front_door||0)),backData:rows.map(r=>Number(r.back_door||0))}};return msg;",
+        "func": "const rows=Array.isArray(msg.payload)?msg.payload:[];rows.reverse();msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{timeline:rows.map(r=>new Date(r.ts).toLocaleTimeString('zh-CN',{hour12:false})),tempData:rows.map(r=>Number(r.temperature||0)),humidityData:rows.map(r=>Number(r.humidity||0)),airData:rows.map(r=>Number(r.air_quality||0)),capacityData:rows.map(r=>Number(r.capacity||0)),tiltData:rows.map(r=>Number(r.tilt_angle||0)),fanData:rows.map(r=>Number(r.fan_status||0)),frontData:rows.map(r=>Number(r.front_door||0)),backData:rows.map(r=>Number(r.back_door||0)),records:rows.map(r=>({ts:r.ts,time:new Date(r.ts).toLocaleString('zh-CN',{hour12:false}),temperature:Number(r.temperature||0),humidity:Number(r.humidity||0),airQuality:Number(r.air_quality||0),capacity:Number(r.capacity||0),tiltAngle:Number(r.tilt_angle||0),fanStatus:Number(r.fan_status||0),frontDoor:Number(r.front_door||0),backDoor:Number(r.back_door||0)}))}};return msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
-        "y": 120,
+        "x": 1300,
+        "y": 440,
         "wires": [
             [
                 "http_resp_history"
@@ -1003,8 +1473,8 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 800,
-        "y": 120,
+        "x": 1510,
+        "y": 440,
         "wires": []
     },
     {
@@ -1054,8 +1524,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
-        "y": 180,
+        "x": 1300,
+        "y": 500,
         "wires": [
             [
                 "http_resp_devices"
@@ -1069,8 +1539,8 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 800,
-        "y": 180,
+        "x": 1510,
+        "y": 500,
         "wires": []
     },
     {
@@ -1120,8 +1590,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
-        "y": 240,
+        "x": 1300,
+        "y": 560,
         "wires": [
             [
                 "http_resp_alerts"
@@ -1135,8 +1605,8 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 800,
-        "y": 240,
+        "x": 1510,
+        "y": 560,
         "wires": []
     },
     {
@@ -1186,8 +1656,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
-        "y": 300,
+        "x": 1300,
+        "y": 620,
         "wires": [
             [
                 "http_resp_commands"
@@ -1201,8 +1671,8 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 800,
-        "y": 300,
+        "x": 1510,
+        "y": 620,
         "wires": []
     },
     {
@@ -1248,7 +1718,7 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 580,
+        "x": 1290,
         "y": 360,
         "wires": []
     },
@@ -1290,21 +1760,22 @@
         "type": "function",
         "z": "tab_api",
         "name": "控制下发",
-        "func": "let body = msg.payload;\n\nif (typeof body === \"string\") {\n  try {\n    body = JSON.parse(body);\n  } catch (e) {\n    body = {};\n  }\n}\n\nif (!body || typeof body !== \"object\") {\n  body = {};\n}\n\nif (msg.req && msg.req.body && typeof msg.req.body === \"object\") {\n  body = Object.assign({}, msg.req.body, body);\n}\n\nconst latest = global.get(\"latestTelemetry\") || {};\nconst age = latest.lastSeen ? Date.now() - latest.lastSeen : 1e12;\n\nconst action = String(body.action || body.command || body.cmd || \"\")\n  .trim()\n  .toUpperCase();\n\nconst deviceId =\n  body.deviceId ||\n  body.device_id ||\n  latest.deviceId ||\n  \"ESP32_BOX_001\";\n\nif (body.adminToken && body.adminToken !== \"admin_auth_secret01\") {\n  msg.statusCode = 401;\n  msg.payload = {\n    code: 401,\n    msg: \"管理员Token错误\"\n  };\n  return [null, null, msg];\n}\n\nif (!action) {\n  msg.statusCode = 400;\n  msg.payload = {\n    code: 400,\n    msg: \"缺少action\",\n    debugPayload: body\n  };\n  return [null, null, msg];\n}\n\nif (action === \"ALARM_STOP\") {\n  global.set(\"alarmSuppressUntil\", Date.now() + 300000);\n}\n\nconst cmd = {\n  deviceId,\n  cmd: action,\n  action,\n  command: action,\n  ts: Date.now()\n};\n\nmsg.statusCode = 200;\nmsg.payload = {\n  code: 200,\n  msg: age > 15000 ? \"ok_offline_warning\" : \"ok\",\n  data: {\n    sent: true,\n    topic: \"device/clothes_box/control\",\n    command: cmd,\n    offlineWarning: age > 15000\n  }\n};\n\nreturn [\n  {\n    topic: \"device/clothes_box/control\",\n    payload: JSON.stringify(cmd)\n  },\n  {\n    topic: \"INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)\",\n    payload: [\n      deviceId,\n      Date.now(),\n      action,\n      \"sent\",\n      \"html_frontend\",\n      JSON.stringify(body)\n    ]\n  },\n  msg\n];",
+        "func": "let body = msg.payload;\n\nif (typeof body === \"string\") {\n  try {\n    body = JSON.parse(body);\n  } catch (e) {\n    body = {};\n  }\n}\n\nif (!body || typeof body !== \"object\") {\n  body = {};\n}\n\nif (msg.req && msg.req.body && typeof msg.req.body === \"object\") {\n  body = Object.assign({}, msg.req.body, body);\n}\n\nconst latest = global.get(\"latestTelemetry\") || {};\nconst age = latest.lastSeen ? Date.now() - latest.lastSeen : 1e12;\n\nconst action = String(body.action || body.command || body.cmd || \"\")\n  .trim()\n  .toUpperCase();\n\nconst deviceId =\n  body.deviceId ||\n  body.device_id ||\n  latest.deviceId ||\n  \"ESP32_BOX_001\";\n\nif (!action) {\n  msg.statusCode = 400;\n  msg.payload = {\n    code: 400,\n    msg: \"??action\",\n    debugPayload: body\n  };\n  return [null, null, msg];\n}\n\nif (action === \"ALARM_STOP\") {\n  global.set('alarmSuppressUntil', Date.now() + 60000);\n}\n\nglobal.set('latestCommandRecord', { deviceId: deviceId, action: action, status: 'sent', source: 'html_frontend', raw: body, ts: Date.now() });\n\nconst cmd = {\n  deviceId,\n  cmd: action,\n  action,\n  command: action,\n  ts: Date.now()\n};\n\nmsg.statusCode = 200;\nmsg.payload = {\n  code: 200,\n  msg: age > 15000 ? \"ok_offline_warning\" : \"ok\",\n  data: {\n    sent: true,\n    topic: \"device/clothes_box/control\",\n    command: cmd,\n    offlineWarning: age > 15000\n  }\n};\n\nreturn [\n  {\n    topic: \"device/clothes_box/control\",\n    payload: JSON.stringify(cmd)\n  },\n  {\n    topic: \"INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)\",\n    payload: [\n      deviceId,\n      Date.now(),\n      action,\n      \"sent\",\n      \"html_frontend\",\n      JSON.stringify(body)\n    ]\n  },\n  msg\n];",
         "outputs": 3,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
+        "x": 660,
         "y": 440,
         "wires": [
             [
                 "mqtt_out_control"
             ],
             [
-                "db_exec"
+                "db_exec",
+                "fn_command_sync"
             ],
             [
                 "http_resp_control"
@@ -1318,7 +1789,7 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 820,
+        "x": 920,
         "y": 440,
         "wires": []
     },
@@ -1360,13 +1831,13 @@
         "type": "function",
         "z": "tab_api",
         "name": "配置下发",
-        "func": "let body = msg.payload || {};\nif (typeof body === 'string') {\n  try { body = JSON.parse(body); } catch (e) { body = {}; }\n}\nif (body.adminToken && body.adminToken !== 'admin_auth_secret01') {\n  msg.statusCode = 401;\n  msg.payload = { code: 401, msg: '管理员Token错误' };\n  return [null, msg];\n}\nconst cfg = {\n  deviceId: body.deviceId || 'ESP32_BOX_001',\n  wifiSsid: body.wifiSsid || body.ssid || '',\n  wifiPass: body.wifiPass || body.password || '',\n  mqttServer: body.mqttServer || '192.168.34.228',\n  mqttPort: Number(body.mqttPort || 1883),\n  ts: Date.now()\n};\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { sent: true, topic: 'device/clothes_box/config', config: { ...cfg, wifiPass: cfg.wifiPass ? '******' : '' } } };\nreturn [\n  { topic: 'device/clothes_box/config', payload: JSON.stringify(cfg) },\n  msg\n];",
+        "func": "let body = msg.payload || {};\nif (typeof body === 'string') {\n  try { body = JSON.parse(body); } catch (e) { body = {}; }\n}\nconst cfg = {\n  deviceId: body.deviceId || 'ESP32_BOX_001',\n  ts: Date.now()\n};\nif (body.wifiSsid || body.ssid) cfg.wifiSsid = body.wifiSsid || body.ssid;\nif (body.wifiPass || body.password) cfg.wifiPass = body.wifiPass || body.password;\nif (body.mqttServer) cfg.mqttServer = body.mqttServer;\nif (body.mqttPort !== undefined && body.mqttPort !== null && body.mqttPort !== '') { const v = Number(body.mqttPort); if (Number.isFinite(v)) cfg.mqttPort = v; }\nif (body.fullThreshold !== undefined && body.fullThreshold !== null && body.fullThreshold !== '') { const v = Number(body.fullThreshold); if (Number.isFinite(v)) cfg.fullThreshold = v; }\nif (body.airQualityThreshold !== undefined && body.airQualityThreshold !== null && body.airQualityThreshold !== '') { const v = Number(body.airQualityThreshold); if (Number.isFinite(v)) cfg.airQualityThreshold = v; }\nif (body.tiltThreshold !== undefined && body.tiltThreshold !== null && body.tiltThreshold !== '') { const v = Number(body.tiltThreshold); if (Number.isFinite(v)) cfg.tiltThreshold = v; }\nmsg.statusCode = 200;\nmsg.payload = { code: 200, msg: 'ok', data: { sent: true, topic: 'device/clothes_box/config', config: { ...cfg, wifiPass: cfg.wifiPass ? '******' : '' } } };\nreturn [\n  { topic: 'device/clothes_box/config', payload: JSON.stringify(cfg) },\n  msg\n];",
         "outputs": 2,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
+        "x": 660,
         "y": 500,
         "wires": [
             [
@@ -1384,7 +1855,7 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 790,
+        "x": 890,
         "y": 500,
         "wires": []
     },
@@ -1426,13 +1897,13 @@
         "type": "function",
         "z": "tab_api",
         "name": "告警已读SQL",
-        "func": "const body=msg.payload||{};const deviceId=body.deviceId||'ESP32_BOX_001';if(body.id){msg.topic='UPDATE alerts SET is_ack = 1 WHERE id = $p1';msg.payload=[body.id];}else{msg.topic='UPDATE alerts SET is_ack = 1 WHERE device_id = $p1';msg.payload=[deviceId];}msg.statusCode=200;msg.payload={code:200,msg:'ok',data:{updated:true,deviceId}};return [msg,null];",
+        "func": "const body=msg.payload||{};const deviceId=body.deviceId||'ESP32_BOX_001';const dbMsg={};if(body.id){dbMsg.topic='UPDATE alerts SET is_ack = 1 WHERE id = $p1';dbMsg.payload=[body.id];}else{dbMsg.topic='UPDATE alerts SET is_ack = 1 WHERE device_id = $p1';dbMsg.payload=[deviceId];}const respMsg={statusCode:200,payload:{code:200,msg:'ok',data:{updated:true,deviceId}}};return [dbMsg,respMsg];",
         "outputs": 2,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
+        "x": 660,
         "y": 560,
         "wires": [
             [
@@ -1450,7 +1921,7 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 800,
+        "x": 900,
         "y": 560,
         "wires": []
     },
@@ -1463,7 +1934,7 @@
         "qos": "0",
         "retain": "false",
         "broker": "mqtt_broker_local",
-        "x": 820,
+        "x": 920,
         "y": 440,
         "wires": []
     },
@@ -1476,7 +1947,7 @@
         "qos": "0",
         "retain": "false",
         "broker": "mqtt_broker_local",
-        "x": 800,
+        "x": 900,
         "y": 500,
         "wires": []
     },
@@ -1488,8 +1959,8 @@
         "sqlquery": "msg.topic",
         "sql": "",
         "name": "SQLite执行",
-        "x": 600,
-        "y": 650,
+        "x": 850,
+        "y": 180,
         "wires": [
             [
                 "fn_db_router"
@@ -1507,8 +1978,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 820,
-        "y": 650,
+        "x": 1020,
+        "y": 170,
         "wires": [
             [
                 "fn_history_fmt"
@@ -1807,7 +2278,7 @@
         "type": "function",
         "z": "tab_dash",
         "name": "面板控制",
-        "func": "const action = msg.payload;\nconst latest = global.get('latestTelemetry') || {};\nconst age = latest.lastSeen ? Date.now() - latest.lastSeen : 1e12;\nconst deviceId = latest.deviceId || 'ESP32_BOX_001';\n\nif (action === 'ALARM_STOP') {\n  global.set('alarmSuppressUntil', Date.now() + 300000);\n}\n\nconst cmd = { deviceId: deviceId, cmd: action, action: action, ts: Date.now() };\n\nreturn [\n  { topic: 'device/clothes_box/control', payload: JSON.stringify(cmd) },\n  { topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [deviceId, Date.now(), action, 'sent', 'dashboard', JSON.stringify({ action: action })] },\n  { payload: '动作: ' + action + '\\n设备: ' + deviceId + '\\n时间: ' + new Date().toLocaleString('zh-CN', { hour12: false }) }\n];",
+        "func": "const action = msg.payload;\nconst latest = global.get('latestTelemetry') || {};\nconst age = latest.lastSeen ? Date.now() - latest.lastSeen : 1e12;\nconst deviceId = latest.deviceId || 'ESP32_BOX_001';\n\nif (action === 'ALARM_STOP') {\n  global.set('alarmSuppressUntil', Date.now() + 60000);\n}\n\nglobal.set('latestCommandRecord', { deviceId: deviceId, action: action, status: 'sent', source: 'dashboard', raw: { action: action }, ts: Date.now() });\n\nconst cmd = { deviceId: deviceId, cmd: action, action: action, ts: Date.now() };\n\nreturn [\n  { topic: 'device/clothes_box/control', payload: JSON.stringify(cmd) },\n  { topic: 'INSERT INTO commands (device_id,ts,action,status,source,raw_json) VALUES ($p1,$p2,$p3,$p4,$p5,$p6)', payload: [deviceId, Date.now(), action, 'sent', 'dashboard', JSON.stringify({ action: action })] },\n  { payload: '??: ' + action + '\\n??: ' + deviceId + '\\n??: ' + new Date().toLocaleString('zh-CN', { hour12: false }) }\n];",
         "outputs": 3,
         "timeout": "",
         "noerr": 0,

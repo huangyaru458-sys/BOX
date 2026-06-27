@@ -4,12 +4,13 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <EEPROM.h>
+#include <Preferences.h>
 #include <Keypad.h>
 #include <WebServer.h>
 #include <U8g2lib.h> 
-#define WIFI_SSID "hhhhhh"
-#define WIFI_PASS "huangyaru"
-#define MQTT_SERVER "192.168.222.228"
+#define WIFI_SSID "hhhh"
+#define WIFI_PASS "huangyongmei66"
+#define MQTT_SERVER "10.150.91.228"
 #define MQTT_PORT 1883
 #define MQTT_USER ""
 #define MQTT_PASS "" 
@@ -28,8 +29,7 @@
 #define PIN_OLED_SDA 21
 #define PIN_OLED_SCL 22
 #define PIN_BUZZER 5
-#define PIN_LED_NORMAL 14
-#define PIN_LED_ALERT 14
+#define PIN_WARNING_LED 14
 #define PIN_FRONT_DOOR_LIGHT 33
 #define PIN_BACK_DOOR_LIGHT 12
 #define PIN_FAN_ENA 27
@@ -47,7 +47,7 @@
 #define MPU_ADDR 0x68
 #define OLED_ADDR 0x3C 
 #define MAX_PASSWORD_LEN 6
-#define PASSWORD_TIMEOUT 5000
+#define PASSWORD_TIMEOUT 15000
 #define BUZZER_BEEP_MS 180 
 #define SENSOR_UPDATE_INTERVAL 2000
 #define MQTT_PUBLISH_INTERVAL 2000
@@ -55,21 +55,19 @@
 #define WIFI_RECONNECT_INTERVAL 5000
 #define MQTT_RECONNECT_INTERVAL 5000
 #define ONLINE_CHECK_INTERVAL 30000 
-#define FULL_THRESHOLD 90.0f
-#define AIR_QUALITY_THRESHOLD 70
-#define AIR_QUALITY_RAW_MIN 0
-#define AIR_QUALITY_RAW_MAX 4095
-#define TILT_THRESHOLD 25.0f
+#define DEFAULT_FULL_THRESHOLD 90.0f
+#define DEFAULT_AIR_QUALITY_THRESHOLD 40
+#define MQ135_PERCENT_SCALE 28.0f
+#define DEFAULT_TILT_THRESHOLD 25.0f
 #define HUMAN_LEAVE_CLOSE_DELAY_MS 5000UL
 #define TILT_CONFIRM_DELAY_MS 2000UL
 #define FULL_CONFIRM_DELAY_MS 5000UL
 #define FULL_RELEASE_DELAY_MS 5000UL
-#define FULL_RELEASE_THRESHOLD 85.0f
 #define FRONT_MANUAL_HOLD_MS 10000UL
 #define FAN_MANUAL_OVERRIDE_MS 120000UL
 #define MPU_CALIBRATION_SAMPLES 30
 #define CONFIG_MAGIC 0x43424647UL
-#define CONFIG_VERSION 1
+#define CONFIG_VERSION 2
 
 typedef struct {
     uint32_t magic;
@@ -78,6 +76,9 @@ typedef struct {
     char wifiPass[65];
     char mqttServer[65];
     uint16_t mqttPort;
+    float fullThreshold;
+    float airQualityThreshold;
+    float tiltThreshold;
 } DeviceConfig;
 
 typedef enum {
@@ -112,6 +113,15 @@ typedef struct {
 } SensorData;
 
 typedef struct {
+    uint32_t magic;
+    uint8_t version;
+    bool warningLed;
+    bool frontDoor;
+    bool backDoor;
+    bool fanStatus;
+} ActuatorState;
+
+typedef struct {
     DeviceState state;
     AlertType currentAlert;
     char netMode[4];
@@ -123,8 +133,10 @@ typedef struct {
 SensorData g_sensorData;
 SystemStatus g_systemStatus;
 DeviceConfig g_config;
+ActuatorState g_savedActuatorState;
 WiFiClient g_wifiClient;
 PubSubClient g_mqttClient(g_wifiClient);
+Preferences g_prefs;
 U8G2_SH1106_128X64_NONAME_F_HW_I2C g_u8g2(U8G2_R0, U8X8_PIN_NONE);
 WebServer g_configServer(80);
 
@@ -151,6 +163,7 @@ unsigned long g_lastOledUpdate = 0;
 unsigned long g_lastWifiCheck = 0;
 unsigned long g_lastMqttCheck = 0;
 unsigned long g_buzzUntilMs = 0;
+unsigned long g_alarmSuppressUntilMs = 0;
 unsigned long g_lastHumanSeenMs = 0;
 unsigned long g_frontDoorAutoCloseAtMs = 0;
 unsigned long g_tiltConfirmSinceMs = 0;
@@ -159,11 +172,16 @@ unsigned long g_fullReleaseSinceMs = 0;
 unsigned long g_frontManualUntilMs = 0;
 unsigned long g_fanManualOverrideUntilMs = 0;
 float g_lastTiltAngle = 0.0f;
+int g_lastMq135Raw = 0;
 float g_mpuPitchOffset = 0.0f;
 float g_mpuRollOffset = 0.0f;
 bool g_mpuCalibrated = false;
 bool g_fullConfirmed = false;
 bool g_prevHumanDetect = false;
+bool g_warningLedState = false;
+bool g_tiltAlertPublished = false;
+bool g_actuatorStateDirty = false;
+unsigned long g_actuatorStateSaveDueMs = 0;
 
 bool readDht11(float &temp, float &hum);
 float readDistanceCm();
@@ -182,6 +200,11 @@ void ledNormalOn();
 void ledNormalOff();
 void ledAlertOn();
 void ledAlertOff();
+void setWarningLed(bool on, const char *tag);
+void markActuatorStateDirty();
+void flushActuatorStateIfNeeded();
+void loadActuatorState();
+void saveActuatorState();
 void openFrontDoor();
 void closeFrontDoor();
 void openBackDoor();
@@ -193,11 +216,16 @@ void loadDeviceConfig();
 void saveDeviceConfig();
 void resetDeviceConfig();
 void applyDeviceConfig(JsonDocument &doc, const char *source);
+float getFullThreshold();
+float getFullReleaseThreshold();
+float getAirQualityThreshold();
+float getTiltThreshold();
 void publishTelemetry();
 void publishAlert(AlertType type, const char *msg);
 void executeCommand(const char *cmd, const char *source);
 void handleMqttMessage(char *topic, byte *payload, unsigned int length);
 void connectWifi();
+bool tryReconnectWifi();
 void connectMqtt();
 void setupApMode();
 void setupConfigPortal();
@@ -225,6 +253,7 @@ String buildStatusJson()
     doc["mqttPort"] = g_config.mqttPort;
     doc["wifiConnected"] = g_systemStatus.wifiConnected;
     doc["mqttConnected"] = g_systemStatus.mqttConnected;
+    doc["online"] = g_systemStatus.state == STATE_AP_MODE ? true : (g_systemStatus.wifiConnected || g_systemStatus.mqttConnected);
     doc["netMode"] = g_systemStatus.netMode;
     doc["systemState"] = g_systemStatus.state == STATE_STANDBY ? "STANDBY" :
                           g_systemStatus.state == STATE_PUT_IN ? "PUT_IN" :
@@ -238,6 +267,7 @@ String buildStatusJson()
     doc["temperature"] = g_sensorData.temperature;
     doc["humidity"] = g_sensorData.humidity;
     doc["airQuality"] = g_sensorData.airQuality;
+    doc["airQualityRaw"] = g_lastMq135Raw;
     doc["humanDetect"] = g_sensorData.humanDetect;
     doc["boxTiltAlert"] = g_sensorData.boxTiltAlert;
     doc["tiltAngle"] = g_lastTiltAngle;
@@ -251,6 +281,10 @@ String buildStatusJson()
     doc["frontManualHoldMs"] = remainingMs(g_frontManualUntilMs);
     doc["fanManualOverrideMs"] = remainingMs(g_fanManualOverrideUntilMs);
     doc["mpuCalibrated"] = g_mpuCalibrated ? 1 : 0;
+    doc["fullThreshold"] = getFullThreshold();
+    doc["fullReleaseThreshold"] = getFullReleaseThreshold();
+    doc["airQualityThreshold"] = getAirQualityThreshold();
+    doc["tiltThreshold"] = getTiltThreshold();
     String out;
     serializeJson(doc, out);
     return out;
@@ -342,13 +376,20 @@ String buildStatusJson()
           return duration * 0.0343f / 2.0f;
 
 }
-  int readMq135()  
+int readMq135()
 {
          int raw = analogRead(PIN_MQ135);
-         int percent = map(raw, AIR_QUALITY_RAW_MIN, AIR_QUALITY_RAW_MAX, 0, 100);
-         if (percent < 0) percent = 0;
-         if (percent > 100) percent = 100;
-         Serial.printf("[SENSOR] air raw=%d percent=%d threshold=%d\n", raw, percent, AIR_QUALITY_THRESHOLD);
+         g_lastMq135Raw = raw;
+         const float cleanRaw = 200.0f;
+         const float badRaw = 900.0f;
+         float score = 100.0f;
+         if (raw > cleanRaw) {
+                 score = 100.0f - (((float)raw - cleanRaw) * 100.0f / (badRaw - cleanRaw));
+         }
+         if (score < 0.0f) score = 0.0f;
+         if (score > 100.0f) score = 100.0f;
+         int percent = (int)lroundf(score);
+         Serial.printf("[SENSOR] air raw=%d score=%d alert=%.1f fan=%.1f\n", raw, percent, getAirQualityThreshold(), getAirQualityThreshold());
          return percent;
 
 }
@@ -428,6 +469,7 @@ void fanOn()
     digitalWrite(PIN_FAN_IN1, HIGH);
     ledcWrite(PIN_FAN_ENA, 255);
     g_sensorData.fanStatus = true;
+    markActuatorStateDirty();
     Serial.println("[ACT] fan gpio on");
 }
 
@@ -436,6 +478,7 @@ void fanOff()
     ledcWrite(PIN_FAN_ENA, 0);
     digitalWrite(PIN_FAN_IN1, LOW);
     g_sensorData.fanStatus = false;
+    markActuatorStateDirty();
     Serial.println("[ACT] fan gpio off");
 }
 
@@ -459,28 +502,94 @@ void buzzerBeep(uint16_t ms)
     g_buzzUntilMs = millis() + ms;
     Serial.printf("[ACT] buzzer beep %u ms\n", ms);
 }
+void setWarningLed(bool on, const char *tag)
+{
+    if (g_warningLedState == on) {
+        return;
+    }
+    g_warningLedState = on;
+    digitalWrite(PIN_WARNING_LED, on ? HIGH : LOW);
+    markActuatorStateDirty();
+    Serial.println(tag);
+}
+void markActuatorStateDirty()
+{
+    g_actuatorStateDirty = true;
+    g_actuatorStateSaveDueMs = millis() + 1000UL;
+}
+void flushActuatorStateIfNeeded()
+{
+    if (!g_actuatorStateDirty) {
+        return;
+    }
+    if ((long)(millis() - g_actuatorStateSaveDueMs) < 0) {
+        return;
+    }
+    saveActuatorState();
+    g_actuatorStateDirty = false;
+}
+void loadActuatorState()
+{
+    g_prefs.begin("box_state", false);
+    g_savedActuatorState.magic = g_prefs.getUInt("magic", 0);
+    g_savedActuatorState.version = (uint8_t)g_prefs.getUChar("ver", 0);
+    g_savedActuatorState.warningLed = g_prefs.getBool("led", false);
+    g_savedActuatorState.frontDoor = g_prefs.getBool("front", false);
+    g_savedActuatorState.backDoor = g_prefs.getBool("back", false);
+    g_savedActuatorState.fanStatus = g_prefs.getBool("fan", false);
+    if (g_savedActuatorState.magic != CONFIG_MAGIC || g_savedActuatorState.version != CONFIG_VERSION) {
+        g_savedActuatorState.magic = CONFIG_MAGIC;
+        g_savedActuatorState.version = CONFIG_VERSION;
+        g_savedActuatorState.warningLed = false;
+        g_savedActuatorState.frontDoor = false;
+        g_savedActuatorState.backDoor = false;
+        g_savedActuatorState.fanStatus = false;
+        Serial.println("[NVS] actuator state not found, using defaults");
+    } else {
+        Serial.printf("[NVS] restored led=%d front=%d back=%d fan=%d\n",
+                      g_savedActuatorState.warningLed ? 1 : 0,
+                      g_savedActuatorState.frontDoor ? 1 : 0,
+                      g_savedActuatorState.backDoor ? 1 : 0,
+                      g_savedActuatorState.fanStatus ? 1 : 0);
+    }
+}
+void saveActuatorState()
+{
+    g_savedActuatorState.magic = CONFIG_MAGIC;
+    g_savedActuatorState.version = CONFIG_VERSION;
+    g_savedActuatorState.warningLed = g_warningLedState;
+    g_savedActuatorState.frontDoor = g_sensorData.frontDoor;
+    g_savedActuatorState.backDoor = g_sensorData.backDoor;
+    g_savedActuatorState.fanStatus = g_sensorData.fanStatus;
+    g_prefs.putUInt("magic", g_savedActuatorState.magic);
+    g_prefs.putUChar("ver", g_savedActuatorState.version);
+    g_prefs.putBool("led", g_savedActuatorState.warningLed);
+    g_prefs.putBool("front", g_savedActuatorState.frontDoor);
+    g_prefs.putBool("back", g_savedActuatorState.backDoor);
+    g_prefs.putBool("fan", g_savedActuatorState.fanStatus);
+    Serial.println("[NVS] actuator state saved");
+}
 void ledNormalOn()  
 {
-    Serial.println("[LED] normal on");
+    setWarningLed(false, "[LED] normal on");
 }
  void ledNormalOff()  
 {
-    Serial.println("[LED] normal off");
+    setWarningLed(false, "[LED] normal off");
 }
  void ledAlertOn()  
 {
-    digitalWrite(PIN_LED_ALERT, HIGH);
-    Serial.println("[LED] alert on");
+    setWarningLed(true, "[LED] alert on");
 }
  void ledAlertOff()  
 {
-    digitalWrite(PIN_LED_ALERT, LOW);
-    Serial.println("[LED] alert off");
+    setWarningLed(false, "[LED] alert off");
 }
 void openFrontDoor()
 {
     digitalWrite(PIN_FRONT_DOOR_LIGHT, HIGH);
     g_sensorData.frontDoor = true;
+    markActuatorStateDirty();
     Serial.println("[ACT] front door light on");
 }
 
@@ -488,6 +597,7 @@ void closeFrontDoor()
 {
     digitalWrite(PIN_FRONT_DOOR_LIGHT, LOW);
     g_sensorData.frontDoor = false;
+    markActuatorStateDirty();
     Serial.println("[ACT] front door light off");
 }
 
@@ -495,6 +605,7 @@ void openBackDoor()
 {
     digitalWrite(PIN_BACK_DOOR_LIGHT, HIGH);
     g_sensorData.backDoor = true;
+    markActuatorStateDirty();
     Serial.println("[ACT] back door light on");
 }
 
@@ -502,10 +613,32 @@ void closeBackDoor()
 {
     digitalWrite(PIN_BACK_DOOR_LIGHT, LOW);
     g_sensorData.backDoor = false;
+    markActuatorStateDirty();
     Serial.println("[ACT] back door light off");
 }
 
-void loadDeviceConfig()
+float getFullThreshold()
+{
+    return g_config.fullThreshold > 0.0f ? g_config.fullThreshold : DEFAULT_FULL_THRESHOLD;
+}
+
+float getFullReleaseThreshold()
+{
+    float value = getFullThreshold() - 5.0f;
+    return value < 0.0f ? 0.0f : value;
+}
+
+float getAirQualityThreshold()
+{
+    return g_config.airQualityThreshold >= 0.0f ? g_config.airQualityThreshold : DEFAULT_AIR_QUALITY_THRESHOLD;
+}
+
+float getTiltThreshold()
+{
+    return g_config.tiltThreshold > 0.0f ? g_config.tiltThreshold : DEFAULT_TILT_THRESHOLD;
+}
+
+static void setDefaultDeviceConfig()
 {
     memset(&g_config, 0, sizeof(g_config));
     g_config.magic = CONFIG_MAGIC;
@@ -514,9 +647,51 @@ void loadDeviceConfig()
     strncpy(g_config.wifiPass, WIFI_PASS, sizeof(g_config.wifiPass) - 1);
     strncpy(g_config.mqttServer, MQTT_SERVER, sizeof(g_config.mqttServer) - 1);
     g_config.mqttPort = MQTT_PORT;
-    saveDeviceConfig();
-    Serial.println("[CFG] EEPROM cleared, using code defaults");
-    Serial.printf("[CFG] wifi ssid=%s mqtt=%s:%u\n", g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort);
+    g_config.fullThreshold = DEFAULT_FULL_THRESHOLD;
+    g_config.airQualityThreshold = DEFAULT_AIR_QUALITY_THRESHOLD;
+    g_config.tiltThreshold = DEFAULT_TILT_THRESHOLD;
+}
+
+void loadDeviceConfig()
+{
+    DeviceConfig stored;
+    EEPROM.get(0, stored);
+
+    bool valid = stored.magic == CONFIG_MAGIC && stored.version >= 1;
+    if (!valid) {
+        setDefaultDeviceConfig();
+        saveDeviceConfig();
+        Serial.println("[CFG] EEPROM invalid, using code defaults");
+        Serial.printf("[CFG] wifi ssid=%s mqtt=%s:%u full=%.1f air=%.1f tilt=%.1f\n",
+                      g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort,
+                      getFullThreshold(), getAirQualityThreshold(), getTiltThreshold());
+        return;
+    }
+
+    memset(&g_config, 0, sizeof(g_config));
+    g_config.magic = CONFIG_MAGIC;
+    g_config.version = CONFIG_VERSION;
+    strncpy(g_config.wifiSsid, stored.wifiSsid, sizeof(g_config.wifiSsid) - 1);
+    strncpy(g_config.wifiPass, stored.wifiPass, sizeof(g_config.wifiPass) - 1);
+    strncpy(g_config.mqttServer, stored.mqttServer, sizeof(g_config.mqttServer) - 1);
+    g_config.mqttPort = stored.mqttPort;
+    if (stored.version >= 2) {
+        g_config.fullThreshold = (stored.fullThreshold > 0.0f && stored.fullThreshold <= 100.0f) ? stored.fullThreshold : DEFAULT_FULL_THRESHOLD;
+        g_config.airQualityThreshold = (stored.airQualityThreshold >= 0.0f && stored.airQualityThreshold <= 100.0f) ? stored.airQualityThreshold : DEFAULT_AIR_QUALITY_THRESHOLD;
+        g_config.tiltThreshold = (stored.tiltThreshold > 0.0f && stored.tiltThreshold <= 90.0f) ? stored.tiltThreshold : DEFAULT_TILT_THRESHOLD;
+    } else {
+        g_config.fullThreshold = DEFAULT_FULL_THRESHOLD;
+        g_config.airQualityThreshold = DEFAULT_AIR_QUALITY_THRESHOLD;
+        g_config.tiltThreshold = DEFAULT_TILT_THRESHOLD;
+    }
+
+    if (stored.version != CONFIG_VERSION || stored.fullThreshold != g_config.fullThreshold || stored.airQualityThreshold != g_config.airQualityThreshold || stored.tiltThreshold != g_config.tiltThreshold) {
+        saveDeviceConfig();
+    }
+
+    Serial.printf("[CFG] loaded wifi ssid=%s mqtt=%s:%u full=%.1f air=%.1f tilt=%.1f\n",
+                  g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort,
+                  getFullThreshold(), getAirQualityThreshold(), getTiltThreshold());
 }
 
 void saveDeviceConfig()
@@ -529,15 +704,11 @@ void saveDeviceConfig()
 
 void resetDeviceConfig()
 {
-    memset(&g_config, 0, sizeof(g_config));
-    g_config.magic = CONFIG_MAGIC;
-    g_config.version = CONFIG_VERSION;
-    strncpy(g_config.wifiSsid, WIFI_SSID, sizeof(g_config.wifiSsid) - 1);
-    strncpy(g_config.wifiPass, WIFI_PASS, sizeof(g_config.wifiPass) - 1);
-    strncpy(g_config.mqttServer, MQTT_SERVER, sizeof(g_config.mqttServer) - 1);
-    g_config.mqttPort = MQTT_PORT;
+    setDefaultDeviceConfig();
     saveDeviceConfig();
-    Serial.printf("[CFG] reset to default wifi=%s mqtt=%s:%u\n", g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort);
+    Serial.printf("[CFG] reset to default wifi=%s mqtt=%s:%u full=%.1f air=%.1f tilt=%.1f\n",
+                  g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort,
+                  getFullThreshold(), getAirQualityThreshold(), getTiltThreshold());
 }
 
 void applyDeviceConfig(JsonDocument &doc, const char *source)
@@ -546,25 +717,53 @@ void applyDeviceConfig(JsonDocument &doc, const char *source)
     const char *pass = doc["wifiPass"] | doc["password"] | doc["wifi_password"];
     const char *mqttServer = doc["mqttServer"] | doc["mqtt_server"];
     uint16_t mqttPort = doc["mqttPort"] | doc["mqtt_port"] | g_config.mqttPort;
+    float fullThreshold = doc["fullThreshold"] | doc["full_threshold"] | doc["capacityThreshold"] | doc["capacity_threshold"] | g_config.fullThreshold;
+    float airThreshold = doc["airQualityThreshold"] | doc["air_quality_threshold"] | doc["airThreshold"] | doc["air_threshold"] | g_config.airQualityThreshold;
+    float tiltThreshold = doc["tiltThreshold"] | doc["tilt_threshold"] | g_config.tiltThreshold;
 
     bool changed = false;
+    bool reconnectNeeded = false;
     if (ssid && strlen(ssid) > 0) {
         memset(g_config.wifiSsid, 0, sizeof(g_config.wifiSsid));
         strncpy(g_config.wifiSsid, ssid, sizeof(g_config.wifiSsid) - 1);
         changed = true;
+        reconnectNeeded = true;
     }
     if (pass) {
         memset(g_config.wifiPass, 0, sizeof(g_config.wifiPass));
         strncpy(g_config.wifiPass, pass, sizeof(g_config.wifiPass) - 1);
         changed = true;
+        reconnectNeeded = true;
     }
     if (mqttServer && strlen(mqttServer) > 0) {
         memset(g_config.mqttServer, 0, sizeof(g_config.mqttServer));
         strncpy(g_config.mqttServer, mqttServer, sizeof(g_config.mqttServer) - 1);
         changed = true;
+        reconnectNeeded = true;
     }
     if (mqttPort > 0 && mqttPort != g_config.mqttPort) {
         g_config.mqttPort = mqttPort;
+        changed = true;
+        reconnectNeeded = true;
+    }
+
+    if (fullThreshold < 1.0f) fullThreshold = DEFAULT_FULL_THRESHOLD;
+    if (fullThreshold > 100.0f) fullThreshold = 100.0f;
+    if (airThreshold < 0.0f) airThreshold = DEFAULT_AIR_QUALITY_THRESHOLD;
+    if (airThreshold > 100.0f) airThreshold = 100.0f;
+    if (tiltThreshold < 1.0f) tiltThreshold = DEFAULT_TILT_THRESHOLD;
+    if (tiltThreshold > 90.0f) tiltThreshold = 90.0f;
+
+    if (fullThreshold < g_config.fullThreshold - 0.01f || fullThreshold > g_config.fullThreshold + 0.01f) {
+        g_config.fullThreshold = fullThreshold;
+        changed = true;
+    }
+    if (airThreshold < g_config.airQualityThreshold - 0.01f || airThreshold > g_config.airQualityThreshold + 0.01f) {
+        g_config.airQualityThreshold = airThreshold;
+        changed = true;
+    }
+    if (tiltThreshold < g_config.tiltThreshold - 0.01f || tiltThreshold > g_config.tiltThreshold + 0.01f) {
+        g_config.tiltThreshold = tiltThreshold;
         changed = true;
     }
 
@@ -574,7 +773,14 @@ void applyDeviceConfig(JsonDocument &doc, const char *source)
     }
 
     saveDeviceConfig();
-    Serial.printf("[%s] config saved wifi=%s mqtt=%s:%u\n", source, g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort);
+    Serial.printf("[%s] config saved wifi=%s mqtt=%s:%u full=%.1f air=%.1f tilt=%.1f\n",
+                  source, g_config.wifiSsid, g_config.mqttServer, g_config.mqttPort,
+                  getFullThreshold(), getAirQualityThreshold(), getTiltThreshold());
+
+    if (!reconnectNeeded) {
+        publishTelemetry();
+        return;
+    }
 
     if (g_mqttClient.connected()) {
         g_mqttClient.disconnect();
@@ -628,10 +834,10 @@ void applyDeviceConfig(JsonDocument &doc, const char *source)
          if (readMpu6050(tiltAngle))  
     {
                  g_lastTiltAngle = tiltAngle;
-                 Serial.printf("[SENSOR] tilt=%.2f threshold=%.2f\n", tiltAngle, TILT_THRESHOLD);
-                 if (tiltAngle > TILT_THRESHOLD) {
+                 Serial.printf("[SENSOR] tilt=%.2f threshold=%.2f\n", tiltAngle, getTiltThreshold());
+                 if (tiltAngle > getTiltThreshold()) {
                          if (g_tiltConfirmSinceMs == 0) g_tiltConfirmSinceMs = millis();
-                         g_sensorData.boxTiltAlert = (millis() - g_tiltConfirmSinceMs) >= TILT_CONFIRM_DELAY_MS;
+                         g_sensorData.boxTiltAlert = true;
                  } else {
                          g_tiltConfirmSinceMs = 0;
                          g_sensorData.boxTiltAlert = false;
@@ -688,12 +894,50 @@ void updateAutoFrontDoor()
 void updateSystemState()
 {
     updateAutoFrontDoor();
+    bool alarmMuted = isTimerActive(g_alarmSuppressUntilMs);
 
-    if (g_sensorData.capacity >= FULL_THRESHOLD) {
+    if (!g_sensorData.boxTiltAlert) {
+        g_tiltAlertPublished = false;
+        if (g_systemStatus.currentAlert == ALERT_BOX_TILT) {
+            g_systemStatus.currentAlert = ALERT_NONE;
+            if (g_systemStatus.state == STATE_ALARM) {
+                g_systemStatus.state = STATE_STANDBY;
+                buzzerOff();
+            }
+        }
+    } else if (!alarmMuted && !g_tiltAlertPublished) {
+        g_systemStatus.currentAlert = ALERT_BOX_TILT;
+        if (g_systemStatus.state != STATE_FULL_LOCK) {
+            g_systemStatus.state = STATE_ALARM;
+        }
+        publishAlert(ALERT_BOX_TILT, "BOX_TILT: box tilt detected");
+        buzzerBeep(1000);
+        g_tiltAlertPublished = true;
+    }
+
+    if (g_systemStatus.currentAlert == ALERT_AIR_BAD && g_sensorData.airQuality >= getAirQualityThreshold()) {
+        g_systemStatus.currentAlert = ALERT_NONE;
+        if (g_systemStatus.state == STATE_ALARM) {
+            g_systemStatus.state = STATE_STANDBY;
+            if (!isTimerActive(g_fanManualOverrideUntilMs)) {
+                fanOff();
+            }
+            buzzerOff();
+        }
+    }
+
+    if (g_systemStatus.currentAlert == ALERT_BOX_FULL && !g_fullConfirmed) {
+        g_systemStatus.currentAlert = ALERT_NONE;
+        if (g_systemStatus.state == STATE_FULL_LOCK) {
+            g_systemStatus.state = STATE_STANDBY;
+        }
+    }
+
+    if (g_sensorData.capacity >= getFullThreshold()) {
         g_fullReleaseSinceMs = 0;
         if (g_fullConfirmSinceMs == 0) {
             g_fullConfirmSinceMs = millis();
-            Serial.printf("[FULL] capacity %.1f >= %.1f, confirming\n", g_sensorData.capacity, FULL_THRESHOLD);
+            Serial.printf("[FULL] capacity %.1f >= %.1f, confirming\n", g_sensorData.capacity, getFullThreshold());
         }
         if (!g_fullConfirmed && millis() - g_fullConfirmSinceMs >= FULL_CONFIRM_DELAY_MS) {
             g_fullConfirmed = true;
@@ -704,10 +948,10 @@ void updateSystemState()
         g_fullConfirmSinceMs = 0;
     }
 
-    if (g_fullConfirmed && g_sensorData.capacity <= FULL_RELEASE_THRESHOLD) {
+    if (g_fullConfirmed && g_sensorData.capacity <= getFullReleaseThreshold()) {
         if (g_fullReleaseSinceMs == 0) {
             g_fullReleaseSinceMs = millis();
-            Serial.printf("[FULL] capacity %.1f <= %.1f, confirming release\n", g_sensorData.capacity, FULL_RELEASE_THRESHOLD);
+            Serial.printf("[FULL] capacity %.1f <= %.1f, confirming release\n", g_sensorData.capacity, getFullReleaseThreshold());
         }
         if (millis() - g_fullReleaseSinceMs >= FULL_RELEASE_DELAY_MS) {
             g_fullConfirmed = false;
@@ -715,7 +959,7 @@ void updateSystemState()
             Serial.println("[FULL] released full lock");
             publishTelemetry();
         }
-    } else if (g_sensorData.capacity > FULL_RELEASE_THRESHOLD) {
+    } else if (g_sensorData.capacity > getFullReleaseThreshold()) {
         g_fullReleaseSinceMs = 0;
     }
 
@@ -732,24 +976,18 @@ void updateSystemState()
                     closeFrontDoor();
                     g_frontDoorAutoCloseAtMs = 0;
                 }
-                publishAlert(ALERT_BOX_FULL, "BOX_FULL: capacity over 90 percent");
+                String fullMsg = String("BOX_FULL: capacity over ") + String(getFullThreshold(), 1) + " percent";
+                publishAlert(ALERT_BOX_FULL, fullMsg.c_str());
                 buzzerBeep(500);
-                ledAlertOn();
-            } else if (g_sensorData.boxTiltAlert) {
-                g_systemStatus.state = STATE_ALARM;
-                g_systemStatus.currentAlert = ALERT_BOX_TILT;
-                publishAlert(ALERT_BOX_TILT, "BOX_TILT: box tilt detected");
-                buzzerBeep(1000);
-                ledAlertOn();
-            } else if (g_sensorData.airQuality > AIR_QUALITY_THRESHOLD) {
+            } else if (!alarmMuted && g_sensorData.airQuality < getAirQualityThreshold()) {
                 g_systemStatus.state = STATE_ALARM;
                 g_systemStatus.currentAlert = ALERT_AIR_BAD;
-                publishAlert(ALERT_AIR_BAD, "AIR_BAD: air quality percent over threshold");
-                ledAlertOn();
-                if (!isTimerActive(g_fanManualOverrideUntilMs)) {
+                String airMsg = String("AIR_BAD: air quality below ") + String(getAirQualityThreshold(), 0);
+                publishAlert(ALERT_AIR_BAD, airMsg.c_str());
+                if (!isTimerActive(g_fanManualOverrideUntilMs) && g_sensorData.airQuality < getAirQualityThreshold()) {
                     fanOn();
                 } else {
-                    Serial.println("[FAN] air alarm active, manual override keeps fan state");
+                    Serial.println("[FAN] air alarm active, manual override or fan threshold not reached");
                 }
                 buzzerBeep(500);
             }
@@ -765,16 +1003,20 @@ void updateSystemState()
             if (!g_fullConfirmed) {
                 g_systemStatus.currentAlert = ALERT_NONE;
                 g_systemStatus.state = STATE_STANDBY;
-                ledAlertOff();
             }
             break;
 
         case STATE_ALARM:
-            if (!g_sensorData.boxTiltAlert && g_sensorData.airQuality <= AIR_QUALITY_THRESHOLD) {
+            if (alarmMuted) {
                 g_systemStatus.currentAlert = ALERT_NONE;
                 g_systemStatus.state = STATE_STANDBY;
-                ledAlertOff();
-                if (!isTimerActive(g_fanManualOverrideUntilMs)) {
+                buzzerOff();
+                break;
+            }
+            if (!g_sensorData.boxTiltAlert && g_sensorData.airQuality >= getAirQualityThreshold()) {
+                g_systemStatus.currentAlert = ALERT_NONE;
+                g_systemStatus.state = STATE_STANDBY;
+                if (!isTimerActive(g_fanManualOverrideUntilMs) && g_sensorData.airQuality >= getAirQualityThreshold()) {
                     fanOff();
                 }
                 buzzerOff();
@@ -785,6 +1027,20 @@ void updateSystemState()
         case STATE_AP_MODE:
         default:
             break;
+    }
+
+    const bool warningLedOn =
+        g_fullConfirmed ||
+        (!alarmMuted && (
+            g_tiltConfirmSinceMs != 0 ||
+            g_sensorData.boxTiltAlert ||
+            g_sensorData.airQuality < getAirQualityThreshold()
+        ));
+
+    if (warningLedOn) {
+        ledAlertOn();
+    } else {
+        ledAlertOff();
     }
 }
 void publishTelemetry()
@@ -801,6 +1057,7 @@ void publishTelemetry()
     doc["temperature"] = g_sensorData.temperature;
     doc["humidity"] = g_sensorData.humidity;
     doc["airQuality"] = g_sensorData.airQuality;
+    doc["airQualityRaw"] = g_lastMq135Raw;
     doc["humanDetect"] = g_sensorData.humanDetect;
     doc["boxTiltAlert"] = g_sensorData.boxTiltAlert;
     doc["tiltAngle"] = g_lastTiltAngle;
@@ -814,6 +1071,10 @@ void publishTelemetry()
     doc["frontManualHoldMs"] = remainingMs(g_frontManualUntilMs);
     doc["fanManualOverrideMs"] = remainingMs(g_fanManualOverrideUntilMs);
     doc["mpuCalibrated"] = g_mpuCalibrated ? 1 : 0;
+    doc["fullThreshold"] = getFullThreshold();
+    doc["fullReleaseThreshold"] = getFullReleaseThreshold();
+    doc["airQualityThreshold"] = getAirQualityThreshold();
+    doc["tiltThreshold"] = getTiltThreshold();
     doc["netMode"] = g_systemStatus.netMode;
     doc["systemState"] = g_systemStatus.state == STATE_STANDBY ? "STANDBY" :
                           g_systemStatus.state == STATE_PUT_IN ? "PUT_IN" :
@@ -912,6 +1173,7 @@ void executeCommand(const char *cmd, const char *source)
     } else if (strcmp(cmd, "BUZZER_BEEP") == 0 || strcmp(cmd, "BEEP") == 0) {
         buzzerBeep(500);
     } else if (strcmp(cmd, "ALARM_STOP") == 0 || strcmp(cmd, "CANCEL_ALARM") == 0) {
+        g_alarmSuppressUntilMs = millis() + 60000UL;
         g_systemStatus.currentAlert = ALERT_NONE;
         g_systemStatus.state = STATE_STANDBY;
         ledAlertOff();
@@ -1015,6 +1277,24 @@ void connectWifi()
             setupApMode();
         }
     }
+}
+
+bool tryReconnectWifi()
+{
+    if (WiFi.status() == WL_CONNECTED) {
+        g_systemStatus.wifiConnected = true;
+        strcpy(g_systemStatus.netMode, "STA");
+        if (g_systemStatus.state == STATE_AP_MODE) {
+            g_systemStatus.state = STATE_STANDBY;
+        }
+        return true;
+    }
+
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.begin(g_config.wifiSsid, g_config.wifiPass);
+    g_systemStatus.wifiConnected = false;
+    g_systemStatus.mqttConnected = false;
+    return false;
 }
 
 void connectMqtt()
@@ -1249,6 +1529,7 @@ void handleConfigPortal()
                  doc["temperature"] = g_sensorData.temperature;
                  doc["humidity"] = g_sensorData.humidity;
                  doc["airQuality"] = g_sensorData.airQuality;
+                 doc["airQualityRaw"] = g_lastMq135Raw;
                  doc["humanDetect"] = g_sensorData.humanDetect;
                  doc["boxTiltAlert"] = g_sensorData.boxTiltAlert;
                  doc["tiltAngle"] = g_lastTiltAngle;
@@ -1259,10 +1540,14 @@ void handleConfigPortal()
                  doc["fullConfirming"] = g_fullConfirmSinceMs != 0 && !g_fullConfirmed ? 1 : 0;
                  doc["fullConfirmMs"] = g_fullConfirmSinceMs != 0 && !g_fullConfirmed ? (uint32_t)(millis() - g_fullConfirmSinceMs) : 0;
                  doc["fullReleaseMs"] = g_fullReleaseSinceMs != 0 && g_fullConfirmed ? (uint32_t)(millis() - g_fullReleaseSinceMs) : 0;
-                 doc["frontManualHoldMs"] = remainingMs(g_frontManualUntilMs);
-                 doc["fanManualOverrideMs"] = remainingMs(g_fanManualOverrideUntilMs);
-                 doc["mpuCalibrated"] = g_mpuCalibrated ? 1 : 0;
-                 doc["netMode"] = g_systemStatus.netMode;
+    doc["frontManualHoldMs"] = remainingMs(g_frontManualUntilMs);
+    doc["fanManualOverrideMs"] = remainingMs(g_fanManualOverrideUntilMs);
+    doc["mpuCalibrated"] = g_mpuCalibrated ? 1 : 0;
+    doc["fullThreshold"] = getFullThreshold();
+    doc["fullReleaseThreshold"] = getFullReleaseThreshold();
+    doc["airQualityThreshold"] = getAirQualityThreshold();
+    doc["tiltThreshold"] = getTiltThreshold();
+    doc["netMode"] = g_systemStatus.netMode;
                   char buffer[1536];
                  serializeJson(doc, buffer, sizeof(buffer));
                   Serial.println("HTTP/1.1 200 OK");
@@ -1384,7 +1669,11 @@ void drawOled()
                  default: break;
 
     }
-         snprintf(line4, sizeof(line4), "%s F%d B%d V%d", stateStr, g_sensorData.frontDoor ? 1 : 0, g_sensorData.backDoor ? 1 : 0, g_sensorData.fanStatus ? 1 : 0);
+        snprintf(line4, sizeof(line4), "%s F:%s B:%s V:%s",
+                 stateStr,
+                 g_sensorData.frontDoor ? "ON" : "OFF",
+                 g_sensorData.backDoor ? "ON" : "OFF",
+                 g_sensorData.fanStatus ? "ON" : "OFF");
           g_u8g2.drawStr(0, 14, line1);
          g_u8g2.drawStr(0, 30, line2);
          g_u8g2.drawStr(0, 46, line3);
@@ -1420,46 +1709,45 @@ void printSnapshot(const char *source)
 
 void handleSerialCommand()
 {
-    if (!Serial.available()) {
-        return;
-    }
-
-    String line;
-    unsigned long start = millis();
-    while (millis() - start < 200) {
-        while (Serial.available()) {
-            char c = (char)Serial.read();
-            if (c == '\r' || c == '\n') {
-                line.trim();
-                if (line.length() == 0) {
-                    return;
-                }
-                if (line.startsWith("GET ") || line.startsWith("POST ")) {
-                    return;
-                }
+    static String line;
+    static unsigned long lineStartMs = 0;
+    while (Serial.available() > 0) {
+        char c = (char)Serial.read();
+        if (c == '\r' || c == '\n') {
+            line.trim();
+            if (line.length() > 0 && !line.startsWith("GET ") && !line.startsWith("POST ")) {
                 line.toUpperCase();
                 executeCommand(line.c_str(), "SERIAL");
-                return;
             }
-            line += c;
-            if (line.length() >= 96) {
-                line.trim();
-                if (line.startsWith("GET ") || line.startsWith("POST ")) {
-                    return;
-                }
-                line.toUpperCase();
-                executeCommand(line.c_str(), "SERIAL");
-                return;
-            }
+            line = "";
+            lineStartMs = 0;
+            continue;
         }
-        delay(1);
+
+        if (line.length() == 0) {
+            lineStartMs = millis();
+        }
+        line += c;
+        if (line.length() >= 96) {
+            line.trim();
+            if (line.length() > 0 && !line.startsWith("GET ") && !line.startsWith("POST ")) {
+                line.toUpperCase();
+                executeCommand(line.c_str(), "SERIAL");
+            }
+            line = "";
+            lineStartMs = 0;
+        }
     }
 
-    line.trim();
-    if (line.length() == 0) return;
-    if (line.startsWith("GET ") || line.startsWith("POST ")) return;
-    line.toUpperCase();
-    executeCommand(line.c_str(), "SERIAL");
+    if (line.length() > 0 && lineStartMs != 0 && millis() - lineStartMs > 200) {
+        line.trim();
+        if (line.length() > 0 && !line.startsWith("GET ") && !line.startsWith("POST ")) {
+            line.toUpperCase();
+            executeCommand(line.c_str(), "SERIAL");
+        }
+        line = "";
+        lineStartMs = 0;
+    }
 }
 
   void handleKeypad()  
@@ -1500,7 +1788,7 @@ void handleSerialCommand()
                      executeCommand("FAN_OFF", "KEYPAD");
                      return;
                  }
-                  if (g_passwordIndex == 0)  
+                 if (g_passwordIndex == 0)
         {
                          g_passwordStartMs = millis();
 
@@ -1541,6 +1829,7 @@ void handleSerialCommand()
         {
                          g_passwordBuffer[g_passwordIndex++] = key;
                          g_passwordBuffer[g_passwordIndex] = '\0';
+                         g_passwordStartMs = millis();
                          buzzerBeep(50);
 
         }
@@ -1570,8 +1859,7 @@ void setup()
     pinMode(PIN_ECHO, INPUT);
     pinMode(PIN_PIR, INPUT);
     pinMode(PIN_BUZZER, OUTPUT);
-    pinMode(PIN_LED_NORMAL, OUTPUT);
-    pinMode(PIN_LED_ALERT, OUTPUT);
+    pinMode(PIN_WARNING_LED, OUTPUT);
     pinMode(PIN_FRONT_DOOR_LIGHT, OUTPUT);
     pinMode(PIN_BACK_DOOR_LIGHT, OUTPUT);
     pinMode(PIN_FAN_ENA, OUTPUT);
@@ -1579,11 +1867,11 @@ void setup()
 
     digitalWrite(PIN_TRIG, LOW);
     digitalWrite(PIN_BUZZER, HIGH);
-    digitalWrite(PIN_LED_NORMAL, LOW);
-    digitalWrite(PIN_LED_ALERT, LOW);
+    digitalWrite(PIN_WARNING_LED, LOW);
     digitalWrite(PIN_FRONT_DOOR_LIGHT, LOW);
     digitalWrite(PIN_BACK_DOOR_LIGHT, LOW);
     digitalWrite(PIN_FAN_IN1, LOW);
+    g_warningLedState = false;
 
     ledcAttach(PIN_FAN_ENA, FAN_PWM_FREQ, FAN_PWM_RES);
     ledcWrite(PIN_FAN_ENA, 0);
@@ -1618,6 +1906,7 @@ void setup()
     g_sensorData.airQuality = 0;
     g_sensorData.humanDetect = false;
     g_sensorData.boxTiltAlert = false;
+    g_tiltAlertPublished = false;
     g_sensorData.fanStatus = false;
     g_sensorData.frontDoor = false;
     g_sensorData.backDoor = false;
@@ -1627,18 +1916,31 @@ void setup()
     g_frontManualUntilMs = 0;
     g_fanManualOverrideUntilMs = 0;
 
+    loadActuatorState();
+    digitalWrite(PIN_WARNING_LED, g_savedActuatorState.warningLed ? HIGH : LOW);
+    digitalWrite(PIN_FRONT_DOOR_LIGHT, g_savedActuatorState.frontDoor ? HIGH : LOW);
+    digitalWrite(PIN_BACK_DOOR_LIGHT, g_savedActuatorState.backDoor ? HIGH : LOW);
+    digitalWrite(PIN_FAN_IN1, g_savedActuatorState.fanStatus ? HIGH : LOW);
+    ledcWrite(PIN_FAN_ENA, g_savedActuatorState.fanStatus ? 255 : 0);
+    g_warningLedState = g_savedActuatorState.warningLed;
+    g_sensorData.frontDoor = g_savedActuatorState.frontDoor;
+    g_sensorData.backDoor = g_savedActuatorState.backDoor;
+    g_sensorData.fanStatus = g_savedActuatorState.fanStatus;
+    g_actuatorStateDirty = false;
+
     connectWifi();
     if (g_systemStatus.wifiConnected) {
         connectMqtt();
     }
 
-    ledNormalOn();
     Serial.println("System ready");
 }
 
 void loop()
 {
     handleConfigPortal();
+    handleSerialCommand();
+    handleKeypad();
 
     if (g_buzzUntilMs != 0 && millis() >= g_buzzUntilMs) {
         digitalWrite(PIN_BUZZER, HIGH);
@@ -1662,7 +1964,7 @@ void loop()
 
     if (!g_systemStatus.wifiConnected && g_systemStatus.state != STATE_AP_MODE && millis() - g_lastWifiCheck > WIFI_RECONNECT_INTERVAL) {
         g_lastWifiCheck = millis();
-        connectWifi();
+        tryReconnectWifi();
     }
 
     if (g_systemStatus.wifiConnected) {
@@ -1701,8 +2003,7 @@ void loop()
         drawOled();
     }
 
-    handleSerialCommand();
-    handleKeypad();
+    flushActuatorStateIfNeeded();
     delay(10);
 }
 

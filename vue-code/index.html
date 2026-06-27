@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
@@ -286,6 +286,108 @@
       margin-top: 25px;
     }
 
+    .history-panel {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .history-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .history-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .history-actions select {
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid #dce5ec;
+      background: #fff;
+      padding: 0 10px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .history-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .history-summary-item {
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(46,204,113,0.14);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-summary-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .history-summary-value {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+      max-height: 280px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .history-row {
+      background: rgba(255,255,255,0.68);
+      border: 1px solid rgba(127,140,141,0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 1.2fr repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      align-items: center;
+    }
+
+    .history-time {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .history-value {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--ink);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .history-empty {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.68);
+      border: 1px dashed rgba(127,140,141,0.26);
+      color: var(--muted);
+      font-weight: 700;
+    }
+
     .stat-label {
       font-size: 13px;
       color: var(--muted);
@@ -464,6 +566,96 @@
       border-bottom: 1px solid rgba(127,140,141,0.18);
     }
 
+    .confirm-mask {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(18, 24, 30, 0.42);
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+      z-index: 9999;
+      padding: 24px;
+    }
+
+    .confirm-mask.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .confirm-dialog {
+      width: min(420px, 100%);
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 22px 22px 18px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(46, 204, 113, 0.16);
+    }
+
+    .confirm-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(46, 204, 113, 0.12);
+      color: #1f8f4d;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .confirm-title {
+      margin-top: 14px;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .confirm-text {
+      margin-top: 10px;
+      font-size: 15px;
+      color: #4e5d6c;
+      line-height: 1.7;
+    }
+
+    .confirm-hint {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .confirm-btn {
+      min-width: 104px;
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 15px;
+    }
+
+    .confirm-btn.cancel {
+      background: #eef3f7;
+      color: #44566b;
+    }
+
+    .confirm-btn.ok {
+      background: linear-gradient(135deg, #2ecc71, #1fa85c);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(46, 204, 113, 0.28);
+    }
+
     @media (max-width: 700px) {
       .viewport-3d { height: 420px; }
       .status-list { grid-template-columns: 1fr; }
@@ -521,6 +713,7 @@
       <div style="position:absolute; top:30px; left:30px; background:#fff; padding:10px 20px; border-radius:30px; box-shadow:0 5px 15px rgba(0,0,0,0.05);">
         <span id="onDot" class="dot offline"></span>
         <b id="onText">设备离线</b>
+        <div id="statusStamp" class="small-text" style="margin-top:4px;">最后更新时间: --</div>
       </div>
 
       <div style="position:absolute; bottom:30px; right:30px; display:flex; gap:10px;">
@@ -545,8 +738,9 @@
       </div>
 
       <div class="glass-card">
-        <div class="stat-label">空气质量 / 姿态</div>
+        <div class="stat-label">空气质量评分 / 姿态</div>
         <div class="stat-val"><span id="aVal">--</span></div>
+        <p id="airMsg" class="small-text">原始值：--</p>
         <p id="tiltMsg" class="small-text">姿态监测：水平</p>
       </div>
 
@@ -559,8 +753,32 @@
           <div class="status-row"><span class="status-name">告警</span><span id="alarmVal" class="status-chip off">正常</span></div>
           <div class="status-row"><span class="status-name">网络</span><span id="netModeVal" class="status-chip off">--</span></div>
           <div class="status-row"><span class="status-name">状态</span><span id="systemStateVal" class="status-chip off">--</span></div>
+          <div class="status-row"><span class="status-name">最后更新时间</span><span id="lastUpdateVal" class="status-chip off">--</span></div>
+          <div class="status-row"><span class="status-name">满载确认</span><span id="fullConfirmVal" class="status-chip off">未确认</span></div>
+          <div class="status-row"><span class="status-name">前门优先</span><span id="frontHoldVal" class="status-chip off">未生效</span></div>
+          <div class="status-row"><span class="status-name">风扇覆盖</span><span id="fanHoldVal" class="status-chip off">未生效</span></div>
+          <div class="status-row"><span class="status-name">MPU校准</span><span id="mpuCalVal" class="status-chip off">未校准</span></div>
         </div>
       </div>
+    </div>
+
+    <div class="glass-card history-panel">
+      <div class="history-head">
+        <div>
+          <div class="stat-label">历史传感器数据</div>
+          <div class="small-text">直接读取数据库记录，设备重启前的数据也会保留</div>
+        </div>
+        <div class="history-actions">
+          <select id="historyLimitSelect" onchange="changeHistoryLimit(event)">
+            <option value="24">最近 24 条</option>
+            <option value="72" selected>最近 72 条</option>
+            <option value="200">最近 200 条</option>
+          </select>
+          <button class="btn-action" style="padding:10px 12px;" onclick="loadHistoryPreview()">刷新</button>
+        </div>
+      </div>
+      <div id="historySummary" class="history-summary"></div>
+      <div id="historyList" class="history-list"></div>
     </div>
   </main>
 
@@ -569,13 +787,13 @@
       <div class="glass-card">
         <div class="stat-label">远程指令下发</div><br />
         <div class="control-grid">
-          <button class="btn-action" onclick="apiControl('OPEN_FRONT')">打开投递口</button>
-          <button class="btn-action" onclick="apiControl('CLOSE_FRONT')">关闭投递口</button>
-          <button class="btn-action yellow" onclick="apiControl('OPEN_BACK')">打开维护门</button>
-          <button class="btn-action yellow" onclick="apiControl('CLOSE_BACK')">关闭维护门</button>
-          <button class="btn-action" onclick="apiControl('FAN_ON')">开启风扇</button>
-          <button class="btn-action" onclick="apiControl('FAN_OFF')">关闭风扇</button>
-          <button class="btn-action red" style="grid-column: span 2;" onclick="apiControl('ALARM_STOP')">停止告警</button>
+          <button class="btn-action" data-control-action="OPEN_FRONT" onclick="apiControl('OPEN_FRONT')">打开投递口</button>
+          <button class="btn-action" data-control-action="CLOSE_FRONT" onclick="apiControl('CLOSE_FRONT')">关闭投递口</button>
+          <button class="btn-action yellow" data-control-action="OPEN_BACK" onclick="apiControl('OPEN_BACK')">打开维护门</button>
+          <button class="btn-action yellow" data-control-action="CLOSE_BACK" onclick="apiControl('CLOSE_BACK')">关闭维护门</button>
+          <button class="btn-action" data-control-action="FAN_ON" onclick="apiControl('FAN_ON')">开启风扇</button>
+          <button class="btn-action" data-control-action="FAN_OFF" onclick="apiControl('FAN_OFF')">关闭风扇</button>
+          <button class="btn-action red" data-control-action="ALARM_STOP" style="grid-column: span 2;" onclick="apiControl('ALARM_STOP')">停止告警</button>
         </div>
       </div>
 
@@ -592,6 +810,9 @@
         <div class="stat-label">接口配置</div><br />
         <div class="input-row"><span>后端地址</span><input id="apiBaseInput" value="http://localhost:1880/api/v1/box" /></div>
         <div class="input-row"><span>设备编号</span><input id="deviceIdInput" value="ESP32_BOX_001" /></div>
+        <div class="input-row"><span>容量阈值</span><input id="fullThresholdInput" type="number" min="1" max="100" step="0.1" oninput="markThresholdsDirty()" /></div>
+        <div class="input-row"><span>空气质量阈值</span><input id="airThresholdInput" type="number" min="0" max="100" step="1" oninput="markThresholdsDirty()" /></div>
+        <div class="input-row"><span>倾斜阈值</span><input id="tiltThresholdInput" type="number" min="1" max="90" step="0.1" oninput="markThresholdsDirty()" /></div>
         <button class="btn-action" style="width:100%;" onclick="saveConfig()">保存配置</button>
       </div>
 
@@ -612,23 +833,60 @@
       <canvas id="histChart" height="100"></canvas>
     </div>
 
-    <div class="stats-grid" style="margin-top:20px;">
+    <div class="stats-grid" style="margin-top:20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
       <div class="glass-card">
         <div class="stat-label">告警记录</div>
+        <button class="btn-action" style="margin-top:10px; padding:10px 12px;" onclick="ackAllAlerts()">全部已读</button>
         <div id="alertList" class="list-box"></div>
       </div>
       <div class="glass-card">
         <div class="stat-label">设备列表</div>
         <div id="devList" class="list-box"></div>
       </div>
+      <div class="glass-card">
+        <div class="stat-label">控制记录</div>
+        <div id="commandList" class="list-box"></div>
+      </div>
     </div>
   </main>
+
+  <div id="confirmMask" class="confirm-mask" aria-hidden="true" onclick="if (event.target === this) resolveConfirm(false)">
+    <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="confirm-badge">操作确认</div>
+      <div id="confirmTitle" class="confirm-title">确认执行</div>
+      <div id="confirmText" class="confirm-text">该操作将直接下发到硬件。</div>
+      <div class="confirm-hint">请确认当前状态后继续，执行后页面会刷新最新回执。</div>
+      <div class="confirm-actions">
+        <button class="confirm-btn cancel" onclick="resolveConfirm(false)">取消</button>
+        <button class="confirm-btn ok" onclick="resolveConfirm(true)">确定执行</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     let API_BASE = 'http://localhost:1880/api/v1/box';
     let DEVICE_ID = 'ESP32_BOX_001';
     let myChart = null;
+    let pendingControl = false;
+    let confirmResolve = null;
+    let statusRequestInFlight = false;
+    let commandsRequestInFlight = false;
+    let statusSocket = null;
+    let statusSocketRetryTimer = null;
+    let statusSocketConnected = false;
+    let statusSocketLastMessageAt = 0;
+    let historyPreviewInFlight = false;
+    let historyPreviewLimit = 72;
+    let thresholdInputsDirty = false;
     const optimisticUntil = { front: 0, back: 0, fan: 0 };
+    const optimisticState = { front: null, back: null, fan: null };
+    function getStatusCacheKey() {
+      return `smartbox-last-status:${DEVICE_ID}`;
+    }
+
+    function getThresholdCacheKey() {
+      return `smartbox-threshold-config:${DEVICE_ID}`;
+    }
 
     function showTab(event, id) {
       document.querySelectorAll('.nav button').forEach((button) => button.classList.remove('active'));
@@ -638,6 +896,7 @@
       if (id === 'data') {
         loadHist();
         loadAlerts();
+        loadCommands();
         loadDevs();
       }
     }
@@ -666,13 +925,54 @@
       el.className = `status-chip ${mode || 'off'}`;
     }
 
-    function saveConfig() {
+    function normalizePayload(result) {
+      if (result && typeof result === 'object' && ('code' in result || 'data' in result || 'msg' in result)) {
+        return {
+          code: Number(result.code || 200),
+          msg: result.msg || 'ok',
+          data: result.data !== undefined ? result.data : result
+        };
+      }
+      return { code: 200, msg: 'ok', data: result || {} };
+    }
+
+    function setLastUpdate(ts) {
+      const text = ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : '--';
+      const stamp = `最后更新时间: ${text}`;
+      document.getElementById('lastUpdateVal').innerText = text;
+      document.getElementById('statusStamp').innerText = stamp;
+    }
+
+    function renderOptimisticDoor(id, actualOpen, key) {
+      const until = optimisticUntil[key] || 0;
+      const override = optimisticState[key];
+      const shouldUseOptimistic = Date.now() < until && override !== null;
+      const open = shouldUseOptimistic ? override : actualOpen;
+      if (id === 'vChute') {
+        document.getElementById(id).classList.toggle('open', open);
+      } else if (id === 'vMaintDoor') {
+        document.getElementById(id).classList.toggle('open', open);
+      } else if (id === 'vFan') {
+        document.getElementById(id).classList.toggle('spinning', open);
+      }
+    }
+
+    async function saveConfig() {
       API_BASE = document.getElementById('apiBaseInput').value.trim().replace(/\/$/, '');
       DEVICE_ID = document.getElementById('deviceIdInput').value.trim() || 'ESP32_BOX_001';
       localStorage.setItem('smartbox-api-base', API_BASE);
       localStorage.setItem('smartbox-device-id', DEVICE_ID);
       addLog('配置已保存');
+      connectStatusSocket();
       fetchStatus();
+      loadHistoryPreview();
+      try {
+        const result = await saveThresholdConfig();
+        addLog(result.msg || '阈值已下发');
+        fetchStatus();
+      } catch (error) {
+        addLog(`阈值保存失败：${error.message}`);
+      }
     }
 
     function loadConfig() {
@@ -680,95 +980,406 @@
       DEVICE_ID = localStorage.getItem('smartbox-device-id') || DEVICE_ID;
       document.getElementById('apiBaseInput').value = API_BASE;
       document.getElementById('deviceIdInput').value = DEVICE_ID;
+      loadThresholdConfig();
+    }
+
+    function loadCachedStatus() {
+      try {
+        const raw = localStorage.getItem(getStatusCacheKey());
+        if (!raw) return;
+        const cached = JSON.parse(raw);
+        if (!cached || typeof cached !== 'object' || !cached.data) return;
+        applyStatusSnapshot(cached.data, true, true, 'cache');
+      } catch (error) {}
+    }
+
+    function saveCachedStatus(data) {
+      try {
+        localStorage.setItem(getStatusCacheKey(), JSON.stringify({
+          ts: Date.now(),
+          data
+        }));
+      } catch (error) {}
+    }
+
+    function markThresholdsDirty() {
+      thresholdInputsDirty = true;
+    }
+
+    function getThresholdDefaults() {
+      return {
+        fullThreshold: 90,
+        airQualityThreshold: 40,
+        tiltThreshold: 25
+      };
+    }
+
+    function readThresholdInputs() {
+      const defaults = getThresholdDefaults();
+      const fullThreshold = Number(document.getElementById('fullThresholdInput')?.value || defaults.fullThreshold);
+      const airQualityThreshold = Number(document.getElementById('airThresholdInput')?.value || defaults.airQualityThreshold);
+      const tiltThreshold = Number(document.getElementById('tiltThresholdInput')?.value || defaults.tiltThreshold);
+      return {
+        fullThreshold: Number.isFinite(fullThreshold) ? fullThreshold : defaults.fullThreshold,
+        airQualityThreshold: Number.isFinite(airQualityThreshold) ? airQualityThreshold : defaults.airQualityThreshold,
+        tiltThreshold: Number.isFinite(tiltThreshold) ? tiltThreshold : defaults.tiltThreshold
+      };
+    }
+
+    function loadThresholdConfig() {
+      const defaults = getThresholdDefaults();
+      try {
+        const raw = localStorage.getItem(getThresholdCacheKey());
+        const saved = raw ? JSON.parse(raw) : null;
+        const values = {
+          fullThreshold: Number(saved?.fullThreshold ?? defaults.fullThreshold),
+          airQualityThreshold: Number(saved?.airQualityThreshold ?? defaults.airQualityThreshold),
+          tiltThreshold: Number(saved?.tiltThreshold ?? defaults.tiltThreshold)
+        };
+        document.getElementById('fullThresholdInput').value = values.fullThreshold;
+        document.getElementById('airThresholdInput').value = values.airQualityThreshold;
+        document.getElementById('tiltThresholdInput').value = values.tiltThreshold;
+      } catch (error) {
+        document.getElementById('fullThresholdInput').value = defaults.fullThreshold;
+        document.getElementById('airThresholdInput').value = defaults.airQualityThreshold;
+        document.getElementById('tiltThresholdInput').value = defaults.tiltThreshold;
+      }
+      thresholdInputsDirty = false;
+    }
+
+    function syncThresholdInputs(data) {
+      if (!data || thresholdInputsDirty) return;
+      const thresholds = data.thresholds || data;
+      const fullThreshold = Number(thresholds.fullThreshold ?? thresholds.full_threshold);
+      const airQualityThreshold = Number(thresholds.airQualityThreshold ?? thresholds.air_quality_threshold);
+      const tiltThreshold = Number(thresholds.tiltThreshold ?? thresholds.tilt_threshold);
+      if (Number.isFinite(fullThreshold)) document.getElementById('fullThresholdInput').value = fullThreshold;
+      if (Number.isFinite(airQualityThreshold)) document.getElementById('airThresholdInput').value = airQualityThreshold;
+      if (Number.isFinite(tiltThreshold)) document.getElementById('tiltThresholdInput').value = tiltThreshold;
+    }
+
+    async function saveThresholdConfig() {
+      const values = readThresholdInputs();
+      localStorage.setItem(getThresholdCacheKey(), JSON.stringify(values));
+      const result = await fetchJson(`${API_BASE}/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: DEVICE_ID,
+          ...values
+        })
+      });
+      thresholdInputsDirty = false;
+      return result;
+    }
+
+    function changeHistoryLimit(event) {
+      historyPreviewLimit = Number(event.target.value || 72);
+      loadHistoryPreview();
+    }
+
+    function buildHistoryRecords(data) {
+      if (Array.isArray(data.records) && data.records.length) {
+        return data.records
+      }
+
+      const timeline = Array.isArray(data.timeline) ? data.timeline : []
+      const tempData = Array.isArray(data.tempData) ? data.tempData : []
+      const humidityData = Array.isArray(data.humidityData) ? data.humidityData : []
+      const airData = Array.isArray(data.airData) ? data.airData : []
+      const capacityData = Array.isArray(data.capacityData) ? data.capacityData : []
+      const tiltData = Array.isArray(data.tiltData) ? data.tiltData : []
+      const fanData = Array.isArray(data.fanData) ? data.fanData : []
+      const frontData = Array.isArray(data.frontData) ? data.frontData : []
+      const backData = Array.isArray(data.backData) ? data.backData : []
+
+      return timeline.map((label, index) => ({
+        time: label,
+        temperature: Number(tempData[index] || 0),
+        humidity: Number(humidityData[index] || 0),
+        airQuality: Number(airData[index] || 0),
+        capacity: Number(capacityData[index] || 0),
+        tiltAngle: Number(tiltData[index] || 0),
+        fanStatus: Number(fanData[index] || 0),
+        frontDoor: Number(frontData[index] || 0),
+        backDoor: Number(backData[index] || 0)
+      }))
+    }
+
+    function getHistoryRecordTime(item) {
+      const raw = item.ts ?? item.timestamp ?? item.time ?? item.created_at ?? item.createdAt ?? 0;
+      const numeric = Number(raw);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        return numeric < 1e12 ? numeric * 1000 : numeric;
+      }
+      const parsed = Date.parse(String(raw).replace(/\//g, '-'));
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function renderHistoryPreview(data) {
+      const summaryBox = document.getElementById('historySummary');
+      const listBox = document.getElementById('historyList');
+      if (!summaryBox || !listBox) return;
+
+      const records = buildHistoryRecords(data).slice().sort((a, b) => getHistoryRecordTime(b) - getHistoryRecordTime(a));
+      if (!records.length) {
+        summaryBox.innerHTML = '';
+        listBox.innerHTML = '<div class="history-empty">暂无历史记录，等设备上报后这里会自动出现。</div>';
+        return;
+      }
+
+      const latest = records[0];
+      summaryBox.innerHTML = [
+        { label: '最新时间', value: latest.time || '--' },
+        { label: '温度', value: `${Number(latest.temperature || 0).toFixed(1)} °C` },
+        { label: '湿度', value: `${Number(latest.humidity || 0).toFixed(1)} %` },
+        { label: '容量', value: `${Number(latest.capacity || 0).toFixed(1)} %` },
+        { label: '空气质量', value: `${Math.round(Number(latest.airQuality || 0))}` }
+      ].map((item) => `<div class="history-summary-item"><div class="history-summary-label">${item.label}</div><div class="history-summary-value">${item.value}</div></div>`).join('');
+
+      listBox.innerHTML = records.map((item) => `
+        <div class="history-row">
+          <div>
+            <div class="history-time">${item.time || '--'}</div>
+            <div class="small-text">前门 ${Number(item.frontDoor || 0) ? '开' : '关'} · 后门 ${Number(item.backDoor || 0) ? '开' : '关'} · 风扇 ${Number(item.fanStatus || 0) ? '开' : '关'}</div>
+          </div>
+          <div class="history-value">${Number(item.temperature || 0).toFixed(1)} °C</div>
+          <div class="history-value">${Number(item.humidity || 0).toFixed(1)} %</div>
+          <div class="history-value">${Number(item.capacity || 0).toFixed(1)} %</div>
+          <div class="history-value">${Math.round(Number(item.airQuality || 0))}</div>
+        </div>
+      `).join('');
+    }
+
+    async function loadHistoryPreview() {
+      if (historyPreviewInFlight) {
+        return;
+      }
+      historyPreviewInFlight = true;
+      try {
+        const result = await fetchJson(`${API_BASE}/history?deviceId=${encodeURIComponent(DEVICE_ID)}&limit=${historyPreviewLimit}`);
+        const data = result.data || {};
+        renderHistoryPreview(data);
+      } catch (error) {
+        const listBox = document.getElementById('historyList');
+        const summaryBox = document.getElementById('historySummary');
+        if (summaryBox) summaryBox.innerHTML = '';
+        if (listBox) listBox.innerHTML = `<div class="history-empty">历史数据加载失败：${error.message}</div>`;
+      } finally {
+        historyPreviewInFlight = false;
+      }
+    }
+
+    function resolveStatusSocketUrl() {
+      try {
+        const apiUrl = new URL(API_BASE);
+        const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${apiUrl.hostname}:1881/?deviceId=${encodeURIComponent(DEVICE_ID)}`;
+      } catch (error) {
+        return `ws://localhost:1881/?deviceId=${encodeURIComponent(DEVICE_ID)}`;
+      }
+    }
+
+    function scheduleStatusSocketReconnect() {
+      if (statusSocketRetryTimer) {
+        clearTimeout(statusSocketRetryTimer);
+      }
+      statusSocketRetryTimer = setTimeout(() => {
+        connectStatusSocket();
+      }, 3000);
+    }
+
+    function closeStatusSocket() {
+      statusSocketConnected = false;
+      if (statusSocketRetryTimer) {
+        clearTimeout(statusSocketRetryTimer);
+        statusSocketRetryTimer = null;
+      }
+      if (statusSocket) {
+        try {
+          statusSocket.onopen = null;
+          statusSocket.onmessage = null;
+          statusSocket.onerror = null;
+          statusSocket.onclose = null;
+          statusSocket.close();
+        } catch (error) {}
+        statusSocket = null;
+      }
+      setPlainChip('backendConnVal', 'HTTP 轮询', 'on');
+    }
+
+    function connectStatusSocket() {
+      closeStatusSocket();
+      if (!('WebSocket' in window)) {
+        return;
+      }
+
+      try {
+        const socket = new WebSocket(resolveStatusSocketUrl());
+        statusSocket = socket;
+        socket.onopen = () => {
+          statusSocketConnected = true;
+          statusSocketLastMessageAt = Date.now();
+          setPlainChip('backendConnVal', 'WebSocket 实时', 'on');
+        };
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message && message.type === 'status' && message.data) {
+              statusSocketLastMessageAt = Date.now();
+              applyStatusSnapshot(message.data, false, true, 'ws');
+              saveCachedStatus(message.data);
+            }
+          } catch (error) {}
+        };
+        socket.onerror = () => {
+          statusSocketConnected = false;
+          setPlainChip('backendConnVal', '连接重试', 'warn');
+        };
+        socket.onclose = () => {
+          statusSocketConnected = false;
+          setPlainChip('backendConnVal', 'HTTP 轮询', 'on');
+          scheduleStatusSocketReconnect();
+        };
+      } catch (error) {
+        statusSocketConnected = false;
+        scheduleStatusSocketReconnect();
+      }
     }
 
     async function fetchJson(url, options) {
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      const response = await fetch(url, { cache: 'no-store', ...options });
+      const payload = await response.json().catch(() => null);
+      const result = normalizePayload(payload);
+      if (!response.ok || result.code >= 400) {
+        throw new Error(result.msg || `HTTP ${response.status}`);
       }
-      return response.json();
+      return result;
+    }
+
+    function applyStatusSnapshot(data, fromCache = false, silent = false, source = 'http') {
+      document.getElementById('tVal').innerText = Number(data.temperature || 0).toFixed(1);
+      document.getElementById('hVal').innerText = Number(data.humidity || 0).toFixed(1);
+      const airQuality = Math.round(Number(data.airQuality || 0));
+      const airQualityRaw = Number(data.airQualityRaw);
+      document.getElementById('aVal').innerText = airQuality;
+      document.getElementById('airMsg').innerText = Number.isFinite(airQualityRaw) ? `原始值：${Math.round(airQualityRaw)}` : '原始值：--';
+
+      const capacity = Math.max(0, Math.min(100, Number(data.capacity || 0)));
+      document.getElementById('cVal').innerText = `${capacity.toFixed(0)}%`;
+      document.getElementById('cBar').style.width = `${capacity}%`;
+      document.getElementById('vStorage').style.height = `${capacity}%`;
+
+      const frontOpen = !!(data.frontDoor || data.frontLight);
+      const backOpen = !!(data.backDoor || data.backLight);
+      const fanOn = !!data.fanStatus;
+      const alarmOn = !!data.boxTiltAlert;
+      const online = data.online !== false && Number(data.lastTelemetryAgeMs || 0) < 15000;
+      const lastSeen = data.updatedAt || data.lastSeenAt || data.lastSeen || null;
+      const fullConfirmed = !!data.fullConfirmed;
+      const fullConfirming = !!data.fullConfirming;
+      const frontHoldMs = Number(data.frontManualHoldMs || 0);
+      const fanHoldMs = Number(data.fanManualOverrideMs || 0);
+      const mpuCalibrated = !!data.mpuCalibrated;
+
+      renderOptimisticDoor('vChute', frontOpen, 'front');
+      renderOptimisticDoor('vMaintDoor', backOpen, 'back');
+      renderOptimisticDoor('vFan', fanOn, 'fan');
+
+      document.getElementById('onDot').className = `dot ${online ? 'online' : 'offline'}`;
+      document.getElementById('onText').innerText = online ? '设备在线' : '设备离线';
+      document.getElementById('humanMsg').innerText = data.humanDetect ? '警告：有人靠近' : '安全监测：正常';
+      document.getElementById('humanMsg').style.color = data.humanDetect ? 'var(--yellow)' : 'var(--green)';
+      document.getElementById('tiltMsg').innerText = alarmOn ? `警告：箱体倾斜 ${Number(data.tiltAngle || 0).toFixed(1)}°` : `姿态监测：${Number(data.tiltAngle || 0).toFixed(1)}°`;
+      document.getElementById('tiltMsg').style.color = alarmOn ? 'var(--red)' : 'var(--yellow)';
+
+      setChip('frontDoorVal', frontOpen, '开启', '关闭');
+      setChip('backDoorVal', backOpen, '开启', '关闭');
+      setChip('fanVal', fanOn, '运行', '关闭');
+      setChip('alarmVal', alarmOn, '告警', '正常', true);
+      setPlainChip('netModeVal', data.netMode || '--', data.netMode === 'AP' ? 'warn' : 'on');
+      setPlainChip('systemStateVal', data.systemState || '--', alarmOn ? 'danger' : 'on');
+      setPlainChip('backendConnVal', source === 'ws' ? 'WebSocket 实时' : source === 'cache' ? '本地缓存' : 'HTTP 轮询', 'on');
+      setChip('deviceConnVal', online, '在线', '离线');
+      setChip('fullConfirmVal', fullConfirmed, '已确认', fullConfirming ? '确认中' : '未确认', true);
+      setChip('frontHoldVal', frontHoldMs > 0, `${Math.ceil(frontHoldMs / 1000)}s`, '未生效', true);
+      setChip('fanHoldVal', fanHoldMs > 0, `${Math.ceil(fanHoldMs / 1000)}s`, '未生效', true);
+      setChip('mpuCalVal', mpuCalibrated, '已校准', '未校准');
+      setLastUpdate(lastSeen);
+      syncThresholdInputs(data);
+      if (!fromCache && !silent) {
+        addLog(`状态刷新成功：${online ? '在线' : '离线'}，${fullConfirmed ? '满载锁定' : (fullConfirming ? '满载确认中' : '正常')}`);
+      }
     }
 
     async function fetchStatus() {
+      if (statusRequestInFlight) {
+        return;
+      }
+      statusRequestInFlight = true;
       try {
-        const result = await fetchJson(`${API_BASE}/status?deviceId=${encodeURIComponent(DEVICE_ID)}`);
+        const result = await fetchJson(`${API_BASE}/status?deviceId=${encodeURIComponent(DEVICE_ID)}&_=${Date.now()}`);
         const data = result.data || {};
-
-        document.getElementById('tVal').innerText = Number(data.temperature || 0).toFixed(1);
-        document.getElementById('hVal').innerText = Number(data.humidity || 0).toFixed(1);
-        document.getElementById('aVal').innerText = Math.round(Number(data.airQuality || 0));
-
-        const capacity = Math.max(0, Math.min(100, Number(data.capacity || 0)));
-        document.getElementById('cVal').innerText = `${capacity.toFixed(0)}%`;
-        document.getElementById('cBar').style.width = `${capacity}%`;
-        document.getElementById('vStorage').style.height = `${capacity}%`;
-
-        const now = Date.now();
-        const frontOpen = !!(data.frontDoor || data.frontLight);
-        const backOpen = !!(data.backDoor || data.backLight);
-        const fanOn = !!data.fanStatus;
-        const alarmOn = !!data.boxTiltAlert;
-        const online = !!data.online;
-
-        if (now >= optimisticUntil.fan) {
-          document.getElementById('vFan').classList.toggle('spinning', fanOn);
-        }
-        if (now >= optimisticUntil.front) {
-          document.getElementById('vChute').classList.toggle('open', frontOpen);
-        }
-        if (now >= optimisticUntil.back) {
-          document.getElementById('vMaintDoor').classList.toggle('open', backOpen);
-        }
-
-        document.getElementById('onDot').className = `dot ${online ? 'online' : 'offline'}`;
-        document.getElementById('onText').innerText = online ? '设备在线' : '设备离线';
-        document.getElementById('humanMsg').innerText = data.humanDetect ? '警告：有人靠近' : '安全监测：正常';
-        document.getElementById('humanMsg').style.color = data.humanDetect ? 'var(--yellow)' : 'var(--green)';
-        document.getElementById('tiltMsg').innerText = alarmOn ? `警告：箱体倾斜 ${Number(data.tiltAngle || 0).toFixed(1)}°` : `姿态监测：${Number(data.tiltAngle || 0).toFixed(1)}°`;
-        document.getElementById('tiltMsg').style.color = alarmOn ? 'var(--red)' : 'var(--yellow)';
-
-        setChip('frontDoorVal', frontOpen, '开启', '关闭');
-        setChip('backDoorVal', backOpen, '开启', '关闭');
-        setChip('fanVal', fanOn, '运行', '关闭');
-        setChip('alarmVal', alarmOn, '告警', '正常', true);
-        setPlainChip('netModeVal', data.netMode || '--', data.netMode === 'AP' ? 'warn' : 'on');
-        setPlainChip('systemStateVal', data.systemState || '--', alarmOn ? 'danger' : 'on');
-        setPlainChip('backendConnVal', '正常', 'on');
-        setChip('deviceConnVal', online, '在线', '离线');
+        applyStatusSnapshot(data, false, false, 'http');
+        saveCachedStatus(data);
       } catch (error) {
         document.getElementById('onDot').className = 'dot offline';
         document.getElementById('onText').innerText = '后端连接失败';
         setPlainChip('backendConnVal', '失败', 'danger');
         setPlainChip('deviceConnVal', '未知', 'warn');
+        document.getElementById('statusStamp').innerText = '最后更新时间: --';
+      } finally {
+        statusRequestInFlight = false;
+      }
+    }
+
+    function openConfirmDialog(action) {
+      const names = {
+        OPEN_FRONT: '打开投递口',
+        CLOSE_FRONT: '关闭投递口',
+        OPEN_BACK: '打开维护门',
+        CLOSE_BACK: '关闭维护门',
+        FAN_ON: '开启风扇',
+        FAN_OFF: '关闭风扇',
+        ALARM_STOP: '停止告警'
+      };
+      document.getElementById('confirmTitle').innerText = `确认执行：${names[action] || action}`;
+      document.getElementById('confirmText').innerText = action === 'ALARM_STOP'
+        ? '该操作会停止当前告警，并在 1 分钟内进入静默抑制。'
+        : '该操作会直接下发到硬件，请确认当前状态无误后继续。';
+      const mask = document.getElementById('confirmMask');
+      mask.classList.add('visible');
+      mask.setAttribute('aria-hidden', 'false');
+      return new Promise((resolve) => {
+        confirmResolve = resolve;
+      });
+    }
+
+    function resolveConfirm(ok) {
+      const mask = document.getElementById('confirmMask');
+      mask.classList.remove('visible');
+      mask.setAttribute('aria-hidden', 'true');
+      if (confirmResolve) {
+        confirmResolve(ok);
+        confirmResolve = null;
       }
     }
 
     async function apiControl(action) {
-      addLog(`执行指令: ${action}`);
-
-      const holdUntil = Date.now() + 6000;
-      if (action === 'OPEN_FRONT') {
-        optimisticUntil.front = holdUntil;
-        document.getElementById('vChute').classList.add('open');
-      } else if (action === 'CLOSE_FRONT') {
-        optimisticUntil.front = holdUntil;
-        document.getElementById('vChute').classList.remove('open');
-      } else if (action === 'OPEN_BACK') {
-        optimisticUntil.back = holdUntil;
-        rotateScene(180);
-        document.getElementById('vMaintDoor').classList.add('open');
-      } else if (action === 'CLOSE_BACK') {
-        optimisticUntil.back = holdUntil;
-        document.getElementById('vMaintDoor').classList.remove('open');
-        setTimeout(() => rotateScene(0), 1000);
-      } else if (action === 'FAN_ON') {
-        optimisticUntil.fan = holdUntil;
-        document.getElementById('vFan').classList.add('spinning');
-      } else if (action === 'FAN_OFF') {
-        optimisticUntil.fan = holdUntil;
-        document.getElementById('vFan').classList.remove('spinning');
+      if (pendingControl) return;
+      const ok = await openConfirmDialog(action);
+      if (!ok) {
+        addLog(`已取消指令：${action}`);
+        return;
       }
+
+      pendingControl = true;
+      addLog(`请求指令：${action}`);
+
+      const expectOpen = action === 'OPEN_FRONT' || action === 'OPEN_BACK' || action === 'FAN_ON';
+      const key = action === 'OPEN_FRONT' || action === 'CLOSE_FRONT' ? 'front' : action === 'OPEN_BACK' || action === 'CLOSE_BACK' ? 'back' : 'fan';
+      optimisticUntil[key] = Date.now() + 6000;
+      optimisticState[key] = expectOpen;
 
       try {
         const result = await fetchJson(`${API_BASE}/control`, {
@@ -781,16 +1392,20 @@
           })
         });
         const offlineWarning = !!(result.data && result.data.offlineWarning);
-        addLog(offlineWarning ? `${result.msg}，设备当前离线` : result.msg);
-        setTimeout(fetchStatus, 1200);
+        addLog(offlineWarning ? `${result.msg}，设备当前离线` : `已回执：${result.msg}`);
+        setTimeout(fetchStatus, 900);
+        setTimeout(loadCommands, 1200);
       } catch (error) {
-        addLog(`错误: ${error.message}`);
+        addLog(`控制失败：${error.message}`);
+        setTimeout(fetchStatus, 700);
+      } finally {
+        pendingControl = false;
       }
     }
 
     async function loadHist() {
       try {
-        const result = await fetchJson(`${API_BASE}/history?deviceId=${encodeURIComponent(DEVICE_ID)}`);
+        const result = await fetchJson(`${API_BASE}/history?deviceId=${encodeURIComponent(DEVICE_ID)}&limit=50`);
         const data = result.data || {};
         const ctx = document.getElementById('histChart').getContext('2d');
         if (myChart) myChart.destroy();
@@ -802,7 +1417,8 @@
               { label: '温度', data: data.tempData || [], borderColor: '#2ecc71', fill: false },
               { label: '湿度', data: data.humidityData || [], borderColor: '#3498db', fill: false },
               { label: '容量', data: data.capacityData || [], borderColor: '#f1c40f', fill: false },
-              { label: '倾角', data: data.tiltData || [], borderColor: '#e74c3c', fill: false }
+              { label: '倾角', data: data.tiltData || [], borderColor: '#e74c3c', fill: false },
+              { label: '风扇', data: data.fanData || [], borderColor: '#9b59b6', fill: false }
             ]
           },
           options: {
@@ -821,10 +1437,42 @@
         const result = await fetchJson(`${API_BASE}/alerts?deviceId=${encodeURIComponent(DEVICE_ID)}`);
         const rows = Array.isArray(result.data) ? result.data : [];
         document.getElementById('alertList').innerHTML = rows.length
-          ? rows.map((item) => `<div class="list-item">${item.time || item.created_at || item.timestamp || '--'}：${item.alertMsg || item.message || item.text || item.alert_type || '告警'}</div>`).join('')
+          ? rows.map((item) => `<div class="list-item">${item.time || item.created_at || item.timestamp || '--'}：${item.is_ack ? '[已读] ' : '[未读] '}${item.alertMsg || item.message || item.text || item.alert_type || '告警'}</div>`).join('')
           : '<div class="list-item">暂无告警</div>';
       } catch (error) {
         document.getElementById('alertList').innerHTML = `<div class="list-item">告警加载失败: ${error.message}</div>`;
+      }
+    }
+
+    async function loadCommands() {
+      if (commandsRequestInFlight) {
+        return;
+      }
+      commandsRequestInFlight = true;
+      try {
+        const result = await fetchJson(`${API_BASE}/commands?deviceId=${encodeURIComponent(DEVICE_ID)}`);
+        const rows = Array.isArray(result.data) ? result.data : [];
+        document.getElementById('commandList').innerHTML = rows.length
+          ? rows.map((item) => `<div class="list-item">${item.time || item.created_at || '--'}：${item.action || '--'} / ${item.status || '--'} / ${item.source || '--'}</div>`).join('')
+          : '<div class="list-item">暂无控制记录</div>';
+      } catch (error) {
+        document.getElementById('commandList').innerHTML = `<div class="list-item">控制记录加载失败: ${error.message}</div>`;
+      } finally {
+        commandsRequestInFlight = false;
+      }
+    }
+
+    async function ackAllAlerts() {
+      try {
+        const result = await fetchJson(`${API_BASE}/alerts/read`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: DEVICE_ID })
+        });
+        addLog(result.msg || '告警已读成功');
+        loadAlerts();
+      } catch (error) {
+        addLog(`告警已读失败：${error.message}`);
       }
     }
 
@@ -833,7 +1481,7 @@
         const result = await fetchJson(`${API_BASE}/devices`);
         const rows = Array.isArray(result.data) ? result.data : [];
         document.getElementById('devList').innerHTML = rows.length
-          ? rows.map((item) => `<div class="list-item">${item.deviceId || item.device_id || '--'} [${item.online ? '在线' : '离线'}]</div>`).join('')
+          ? rows.map((item) => `<div class="list-item">${item.deviceId || item.device_id || '--'} [${item.online ? '在线' : '离线'}] ${item.last_seen ? new Date(item.last_seen).toLocaleString('zh-CN', { hour12: false }) : ''}</div>`).join('')
           : '<div class="list-item">暂无设备</div>';
       } catch (error) {
         document.getElementById('devList').innerHTML = `<div class="list-item">设备列表加载失败: ${error.message}</div>`;
@@ -842,8 +1490,27 @@
 
     window.onload = () => {
       loadConfig();
+      loadCachedStatus();
+      connectStatusSocket();
       fetchStatus();
-      setInterval(fetchStatus, 3000);
+      loadHistoryPreview();
+      loadAlerts();
+      loadCommands();
+      loadDevs();
+      setInterval(() => {
+        if (!statusSocketConnected) {
+          fetchStatus();
+          return;
+        }
+        if (Date.now() - statusSocketLastMessageAt > 10000) {
+          closeStatusSocket();
+          fetchStatus();
+        }
+      }, 5000);
+      setInterval(loadHistoryPreview, 30000);
+      setInterval(loadAlerts, 5000);
+      setInterval(loadCommands, 10000);
+      setInterval(loadDevs, 30000);
     };
   </script>
 </body>
